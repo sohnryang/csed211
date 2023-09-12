@@ -24,8 +24,7 @@ LAB L1 INSTRUCTIONS:
  */
 
 int bitNor(int x, int y) {
-  //to be implemented
-  return 0;
+  return (~x) & (~y);
 }
 
 
@@ -38,8 +37,7 @@ int bitNor(int x, int y) {
  *   Rating: 1
  */
 int isZero(int x) {
-  //to be implemented
-  return 0;
+  return !x;
 }
 
 
@@ -53,8 +51,14 @@ int isZero(int x) {
  *   Rating: 3
  */
 int addOK(int x, int y) {
-  //to be implemented
-  return 0;
+  int mask = 3 << 30;
+  int x_top2 = mask & x, y_top2 = mask & y;
+  int x_topless = x_top2 ^ x, y_topless = y_top2 ^ y;
+  int sum_topless = x_topless + y_topless;
+  int carry_from_topless = (sum_topless >> 30) & 1;
+  int carry_in = (((x_top2 >> 30) & 1) + ((y_top2 >> 30) & 1) + carry_from_topless) >> 1;
+  int carry_out = (((x_top2 >> 31) & 1) + ((y_top2 >> 31) & 1) + carry_in) >> 1;
+  return !(carry_in ^ carry_out);
 }
 
 
@@ -68,8 +72,7 @@ int addOK(int x, int y) {
  *   Rating: 4
  */
 int absVal(int x) {
-  //to be implemented
-  return 0;
+  return ((((1 << 31) & x) >> 31) ^ x) + !!((1 << 31) & x);
 }
 
 
@@ -83,7 +86,6 @@ int absVal(int x) {
  *   Rating: 3 
  */
 int logicalShift(int x, int n) {
-  //to be implemented
-  return 0;
+  return ((((1 << 31) & x) >> n) << 1) ^ (x >> n);
 }
 
