@@ -51,14 +51,11 @@ int isZero(int x) {
  *   Rating: 3
  */
 int addOK(int x, int y) {
-  int mask = 3 << 30;
-  int x_top2 = mask & x, y_top2 = mask & y;
-  int x_topless = x_top2 ^ x, y_topless = y_top2 ^ y;
-  int sum_topless = x_topless + y_topless;
-  int carry_from_topless = (sum_topless >> 30) & 1;
-  int carry_in = (((x_top2 >> 30) & 1) + ((y_top2 >> 30) & 1) + carry_from_topless) >> 1;
-  int carry_out = (((x_top2 >> 31) & 1) + ((y_top2 >> 31) & 1) + carry_in) >> 1;
-  return !(carry_in ^ carry_out);
+  int x_top2 = (x >> 30) & 3, y_top2 = (y >> 30) & 3;
+  int carry_tail = ((x ^ (x_top2 << 30)) + (y ^ (y_top2 << 30))) >> 30;
+  int carry_in = ((x_top2 & 1) + (y_top2 & 1) + carry_tail) >> 1;
+  int x_msb = x_top2 >> 1, y_msb = y_top2 >> 1;
+  return (x_msb ^ y_msb) | !(carry_in ^ x_msb);
 }
 
 
