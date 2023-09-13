@@ -53,9 +53,8 @@ int isZero(int x) {
 int addOK(int x, int y) {
   int x_top2 = (x >> 30) & 3, y_top2 = (y >> 30) & 3;
   int carry_tail = ((x ^ (x_top2 << 30)) + (y ^ (y_top2 << 30))) >> 30;
-  int carry_in = ((x_top2 & 1) + (y_top2 & 1) + carry_tail) >> 1;
-  int x_msb = x_top2 >> 1, y_msb = y_top2 >> 1;
-  return (x_msb ^ y_msb) | !(carry_in ^ x_msb);
+  int carry_in_unshifted = (x_top2 & 1) + (y_top2 & 1) + carry_tail;
+  return ((x_top2 ^ y_top2) >> 1) | !((carry_in_unshifted ^ x_top2) >> 1);
 }
 
 
