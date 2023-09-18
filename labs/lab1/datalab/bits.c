@@ -68,7 +68,8 @@ int addOK(int x, int y) {
  *   Rating: 4
  */
 int absVal(int x) {
-  return ((((1 << 31) & x) >> 31) ^ x) + !!((1 << 31) & x);
+  int msb = (1 << 31) & x;
+  return ((msb >> 31) ^ x) + (!!msb);
 }
 
 
