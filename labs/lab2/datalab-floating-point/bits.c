@@ -175,7 +175,7 @@ NOTES:
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+  return (~x) + 1;
 }
 /* 
  * isLess - if x < y  then return 1, else return 0 
@@ -185,7 +185,9 @@ int negate(int x) {
  *   Rating: 3
  */
 int isLess(int x, int y) {
-  return 2;
+  int neg_y = (~y) + 1;
+  int x_minus_y = x + neg_y;
+  return !!(x_minus_y >> 31);
 }
 /* 
  * float_abs - Return bit-level equivalent of absolute value of f for
@@ -199,7 +201,11 @@ int isLess(int x, int y) {
  *   Rating: 2
  */
 unsigned float_abs(unsigned uf) {
-  return 2;
+  unsigned int nan_mask = ((1 << 8) - 1) << 23;
+  int sign_mask = (~0u) >> 1;
+  unsigned int res = uf & sign_mask;
+  if ((nan_mask & uf) == nan_mask && res != nan_mask) res = uf;
+  return res;
 }
 /* 
  * float_twice - Return bit-level equivalent of expression 2*f for
@@ -213,7 +219,17 @@ unsigned float_abs(unsigned uf) {
  *   Rating: 4
  */
 unsigned float_twice(unsigned uf) {
-  return 2;
+  unsigned int sign_mask = 1 << 31;
+  unsigned int exp_mask = ((1 << 8) - 1) << 23;
+  unsigned int exp_part = uf & exp_mask;
+  unsigned int res;
+  if (exp_part == exp_mask) res = uf;
+  else if (!exp_part) res = (uf & sign_mask) | ((uf & (~sign_mask)) << 1);
+  else {
+    unsigned int exp_inc = exp_part + (1 << 23);
+    res = (uf & (~exp_mask)) | exp_inc;
+  }
+  return res;
 }
 /* 
  * float_i2f - Return bit-level equivalent of expression (float) x
@@ -225,7 +241,37 @@ unsigned float_twice(unsigned uf) {
  *   Rating: 4
  */
 unsigned float_i2f(int x) {
-  return 2;
+  unsigned int res;
+  unsigned int sign = x < 0;
+  unsigned int absval = sign ? -x : x;
+  unsigned int shifted = absval;
+  int bitlen = 0;
+  int exp;
+  int exp_bias = 0x7f;
+  while (shifted) {
+    shifted >>= 1;
+    bitlen++;
+  }
+  exp = bitlen - 1;
+  if (x == 0) res = 0;
+  else {
+    int mant = absval;
+    if (bitlen < 24)
+      mant = absval << (24 - bitlen);
+    else if (bitlen > 24) {
+      int shifted_one_less = (absval >> (bitlen - 25));
+      int round = shifted_one_less & 1;
+      unsigned int sticky = bitlen == 25 ? 0 : absval << (57 - bitlen);
+      mant = shifted_one_less >> 1;
+      if (round && (sticky || (mant & 1))) mant++;
+    }
+    if (mant >= 0x1000000) {
+      exp++;
+      mant >>= 1;
+    }
+    res = (sign << 31) | ((exp + exp_bias) << 23) | (mant & 0x7fffff);
+  }
+  return res;
 }
 /* 
  * float_f2i - Return bit-level equivalent of expression (int) f
@@ -240,5 +286,19 @@ unsigned float_i2f(int x) {
  *   Rating: 4
  */
 int float_f2i(unsigned uf) {
-  return 2;
+  unsigned int res;
+  unsigned int is_negative = uf >> 31;
+  int exp_bias = 0x7f;
+  int exp = ((uf >> 23) & 0xff) - exp_bias;
+  unsigned int mant = uf & 0x7fffff;
+  if (exp < 0) res = 0;
+  else if (exp == 31 && is_negative && !mant) res = -2147483648;
+  else if (exp > 31) res = 0x80000000u;
+  else {
+    mant |= 0x800000;
+    if (exp < 23) res = mant >> (23 - exp);
+    else res = mant << (exp - 23);
+    if (is_negative) res = -res;
+  }
+  return res;
 }
