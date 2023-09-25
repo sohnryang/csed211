@@ -201,8 +201,8 @@ int isLess(int x, int y) {
  *   Rating: 2
  */
 unsigned float_abs(unsigned uf) {
-  unsigned int nan_mask = ((1 << 8) - 1) << 23;
-  int sign_mask = (~0u) >> 1;
+  unsigned int nan_mask = 0x7f800000;
+  int sign_mask = 0x7fffffff;
   unsigned int res = uf & sign_mask;
   if ((nan_mask & uf) == nan_mask && res != nan_mask) res = uf;
   return res;
@@ -219,14 +219,14 @@ unsigned float_abs(unsigned uf) {
  *   Rating: 4
  */
 unsigned float_twice(unsigned uf) {
-  unsigned int sign_mask = 1 << 31;
-  unsigned int exp_mask = ((1 << 8) - 1) << 23;
+  unsigned int sign_mask = 0x80000000;
+  unsigned int exp_mask = 0x7f800000;
   unsigned int exp_part = uf & exp_mask;
   unsigned int res;
   if (exp_part == exp_mask) res = uf;
   else if (!exp_part) res = (uf & sign_mask) | ((uf & (~sign_mask)) << 1);
   else {
-    unsigned int exp_inc = exp_part + (1 << 23);
+    unsigned int exp_inc = exp_part + 0x800000;
     res = (uf & (~exp_mask)) | exp_inc;
   }
   return res;
