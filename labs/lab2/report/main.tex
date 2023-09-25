@@ -61,10 +61,9 @@ Two's complement 방식의 정의대로 계산하면 된다. 주어진 숫자의
 더하였다.
 
 \subsection{\texttt{isLess} -- Compare Signed Integers}
-간단하게 \texttt{x - y}를 계산하고 계산 결과의 부호를 읽는 방식으로 구현하였다.
-앞서 \texttt{negate}에서 했던 것처럼 \texttt{y}의 부호를 뒤집어
-\texttt{neg\_y}에 저장하고, \texttt{x + neg\_y}를 구한 뒤 most significant
-bit를 확인하였다.
+\texttt{x}가 \texttt{y}보다 작은 경우는 \texttt{x}가 음수, \texttt{y}가 0
+이상이거나 둘의 부호가 같고 \texttt{x - y}가 음수인 경우임에 주목하여 코드를
+작성하였다.
 
 \subsection{\texttt{float\_abs} -- Absolute Value of Float}
 우선 MSB만 0이고 나머지 비트는 1인 32비트 상수를 \texttt{sign\_mask}에 저장한
