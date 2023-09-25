@@ -293,7 +293,7 @@ int float_f2i(unsigned uf) {
   unsigned int mant = uf & 0x7fffff;
   if (exp < 0) res = 0;
   else if (exp == 31 && is_negative && !mant) res = -2147483648;
-  else if (exp > 31) res = 0x80000000u;
+  else if (exp >= 31) res = 0x80000000u;
   else {
     mant |= 0x800000;
     if (exp < 23) res = mant >> (23 - exp);
