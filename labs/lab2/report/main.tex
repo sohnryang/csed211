@@ -1,0 +1,110 @@
+\documentclass{scrartcl}
+\usepackage[margin=3cm]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{blindtext}
+\usepackage{datetime}
+\usepackage{fontspec}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{kotex}
+\usepackage[lighttt]{lmodern}
+\usepackage{listings}
+\usepackage{mathrsfs}
+\usepackage{mathtools}
+\usepackage{pgf,tikz,pgfplots}
+
+\pgfplotsset{compat=1.15}
+\usetikzlibrary{arrows}
+\newtheorem{theorem}{Theorem}
+
+\lstset{
+  numbers=none, frame=single, showspaces=false,
+  showstringspaces=false, showtabs=false, breaklines=true, showlines=true,
+  breakatwhitespace=true, basicstyle=\ttfamily, keywordstyle=\bfseries, basewidth=0.5em
+}
+
+\setmainhangulfont{Noto Serif CJK KR}[
+  UprightFont=* Light, BoldFont=* Bold,
+  Script=Hangul, Language=Korean, AutoFakeSlant,
+]
+\setsanshangulfont{Noto Sans CJK KR}[
+  UprightFont=* DemiLight, BoldFont=* Medium,
+  Script=Hangul, Language=Korean
+]
+\setmathhangulfont{Noto Sans CJK KR}[
+  SizeFeatures={
+    {Size=-6,  Font=* Medium},
+    {Size=6-9, Font=*},
+    {Size=9-,  Font=* DemiLight},
+  },
+  Script=Hangul, Language=Korean
+]
+\title{CSED211: Lab 2}
+\author{손량(20220323)}
+\date{Last compiled on: \today, \currenttime}
+
+\newcommand{\un}[1]{\ensuremath{\ \mathrm{#1}}}
+
+\begin{document}
+\maketitle
+
+\section{개요}
+몇 가지 간단한 정수 관련 함수와 IEEE~754 표준에 따른 floating point number 관련
+함수를 구현해 본다.
+
+\section{코드 설명}
+
+\subsection{\texttt{negate} -- Negate Signed Integer}
+Two's complement 방식의 정의대로 계산하면 된다. 주어진 숫자의 bitwise not에 1을
+더하였다.
+
+\subsection{\texttt{isLess} -- Compare Signed Integers}
+간단하게 \texttt{x - y}를 계산하고 계산 결과의 부호를 읽는 방식으로 구현하였다.
+앞서 \texttt{negate}에서 했던 것처럼 \texttt{y}의 부호를 뒤집어
+\texttt{neg\_y}에 저장하고, \texttt{x + neg\_y}를 구한 뒤 most significant
+bit를 확인하였다.
+
+\subsection{\texttt{float\_abs} -- Absolute Value of Float}
+우선 MSB만 0이고 나머지 비트는 1인 32비트 상수를 \texttt{sign\_mask}에 저장한
+다음, 이를 \texttt{uf}와 bitwise and하여 결과값 \texttt{res}를 얻었다.
+\texttt{uf}가 \texttt{NaN}일 경우 그대로 반환해야 하기 때문에, \texttt{NaN}
+판정을 위해 \texttt{nan\_mask} 변수를 사용하였다. 이 변수에는
+\texttt{Infinity}에 해당하는 값이 저장되어 있는데, \texttt{nan\_mask}와
+\texttt{uf}의 bitwise and 결괏값이 \texttt{nan\_mask}와 같은 경우,
+\texttt{uf}는 \texttt{Infinity}, \texttt{-Infinity}, \texttt{NaN} 셋 중 하나일
+것이다. \texttt{res}가 \texttt{Infinity}가 아닌 경우, \texttt{uf}는
+\texttt{NaN}이므로 \texttt{uf} 그대로를 반환한다. 아닌 경우에는 \texttt{res}에
+담긴 결괏값이 정확함을 알 수 있고, \texttt{res}를 반환한다.
+
+\subsection{\texttt{float\_twice} -- Double a Float}
+우선 IEEE~754 floating point의 exponent 부분에 해당하는 비트만 1인 상수를
+\texttt{exp\_mask}에 저장하고, \texttt{uf}에 저장해 exponent 부분을 가져온다.
+만약 exponent에 해당하는 비트들이 모두 1이라면 이미 \texttt{Infinity}나
+\texttt{NaN}이므로, \texttt{uf}를 그대로 반환한다. 그렇지 않은 경우에는
+exponent에 해당하는 값을 1 증가시킨 후 \texttt{uf}의 exponent 부분을 덮어씌운
+숫자를 반환한다.
+
+\subsection{\texttt{float\_i2f} -- Signed Integer to Float}
+주어진 정수 \texttt{x}의 크기에 따라 동작이 달라진다. \texttt{x}의 leading
+zero를 제외한 부분의 길이를 \texttt{bitlen}에 저장하고, \texttt{bitlen}이
+24보다 작은 경우에는 mantissa에 적절히 \texttt{x}의 절댓값을 left shift하여
+저장하고, \texttt{bitlen}이 24인 경우에는 절댓값 그대로를 mantissa에 저장한다.
+만약 \texttt{bitlen}이 24보다 큰 경우에는 round to even 규칙에 맞추어
+rounding을 수행하여 mantissa를 설정한다. 최종 결과는 \texttt{x}의 부호에 맞게
+sign bit를 설정하고, exponent와 mantissa를 표준에 맞게 합쳐 얻는다.
+
+\subsection{\texttt{float\_f2i} -- Float to Signed Integer}
+\texttt{uf}의 sign bit를 right shift로 얻어 음수인지 판정하여
+\texttt{is\_negative}에 저장한다. \texttt{uf}의 exponent 부분과 mantissa 부분을
+각각 \texttt{exp}, \texttt{mant}에 저장한 뒤, \texttt{exp}에 따라 변환을 다르게
+수행한다. \texttt{exp}가 0 미만인 경우, \texttt{uf}는 절댓값이 1보다 작은 수를
+나타내므로 결괏값은 0이 된다. \texttt{exp}가 31이고 \texttt{uf}가 음수이며
+mantissa가 0인 경우에는 결괏값은 \texttt{INT\_MIN}이다. 그 이와에
+\texttt{exp}가 31 이상인 경우에는 범위 밖으로 나간 것으로 간주하였다.
+\texttt{exp}가 이외의 값을 가지는 경우에는 \texttt{mant}를 적당한 값만큼
+shift하여 결괏값을 얻었다.
+
+\end{document}
+% vim: textwidth=79
