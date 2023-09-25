@@ -187,7 +187,7 @@ int negate(int x) {
 int isLess(int x, int y) {
   int neg_y = (~y) + 1;
   int x_minus_y = x + neg_y;
-  return !!(x_minus_y >> 31);
+  return (((x & (~y)) | ((~(x ^ y)) & x_minus_y)) >> 31) & 1;
 }
 /* 
  * float_abs - Return bit-level equivalent of absolute value of f for
