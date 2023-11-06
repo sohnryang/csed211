@@ -41,7 +41,7 @@
   },
   Script=Hangul, Language=Korean
 ]
-\title{CSED211: Lab 3 (due Nov. 6)}
+\title{CSED211: Lab 4 (due Nov. 6)}
 \author{손량(20220323)}
 \date{Last compiled on: \today, \currenttime}
 
@@ -60,8 +60,8 @@ Phase 1을 해결하기 위해서는 \texttt{getbuf} 함수의 buffer overflow �
 활용하여 \texttt{touch1} 함수를 실행해야 한다. \texttt{getbuf} 함수는 스택에
 \texttt{0x18}, 즉 24바이트를 할당하기 때문에 24바이트의 문자열 뒤에
 \texttt{touch1} 함수의 주소인 \texttt{0x40184d}를 byte order에 맞게 붙여주면
-공격을 위한 input string을 생성할 수 있다. 이를 위해서는 다음과 같은 파이썬
-코드를 사용하고,
+공격을 위한 input string을 생성할 수 있다. 이를 위해서 다음과 같은 파이썬
+코드를 사용하여 \texttt{phase1\_payload.bin} 파일을 생성하였다.
 \begin{lstlisting}[language=Python]
 import struct
 
@@ -107,8 +107,8 @@ $ ld -e start --oformat binary -o phase2_code.bin phase2_code.o
 내용을 스택에 덮어쓰면 된다. \texttt{getbuf} 함수의 \texttt{ret} 명령어가
 실행되는 순간에 \texttt{rsp} 값은 \texttt{0x55629f40}이기 때문에, 리턴 주소를
 \texttt{0x55629f48}로 설정한 뒤 주소 뒤에 앞서 얻은 \texttt{phase2\_code.bin}
-파일의 내용을 붙이면 공격을 위한 input string을 만들 수 있다. 이를 수행하는
-코드는 다음과 같다.
+파일의 내용을 붙이면 공격을 위한 input string을 만들 수 있다. Input string을
+만드는 코드는 다음과 같다.
 \begin{lstlisting}[language=Python]
 import struct
 
@@ -142,8 +142,8 @@ NICE JOB!
 공격을 할 수 있음을 예상할 수 있다. 문자열 또한 스택에 적어두고, 스택의 주소를
 참조하는 식으로 공격을 설계하면 될 것이다. 여기에서는 스택의 적힌 리턴 주소
 바로 다음에 cookie를 16진수로 적은 문자열을 저장하고 그 다음에 코드가
-이어지도록 했지만, 여러 가지 방법이 가능할 것이다. 스택에 덮을 어셈블리 코드는
-다음과 같다.
+이어지도록 했지만, 이 외에도 여러 가지 방법이 가능할 것이다. 스택에 덮을
+어셈블리 코드는 다음과 같다.
 \begin{lstlisting}
 .section .text
 .globl start
