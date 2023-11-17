@@ -1,0 +1,5 @@
+csim
+tracegen
+test-trans
+*.tar
+compile_commands.json
