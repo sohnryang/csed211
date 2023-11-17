@@ -54,8 +54,6 @@ bool next_access_info(struct access_info *info, FILE *file) {
   size_str[255] = '\0';
 
   addr = strtoull(addr_str, NULL, 16);
-  if (addr == 0)
-    return false;
 
   size = strtol(size_str, NULL, 10);
   if (size == 0)
