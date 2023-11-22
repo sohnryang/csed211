@@ -3,3 +3,4 @@ tracegen
 test-trans
 *.tar
 compile_commands.json
+.csim_results
