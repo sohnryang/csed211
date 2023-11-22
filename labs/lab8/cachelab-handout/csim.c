@@ -269,6 +269,7 @@ void simulate_access(struct cache_store *store,
 
   tag = addr_tag(store, info->addr);
   line = find_matching_line(set, tag);
+  evicted = false;
   if (line == NULL) {
     missed = true;
     line = find_empty_line(set);
