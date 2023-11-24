@@ -41,70 +41,55 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N]) {
   else if (M == 64)
     for (i = 0; i < N; i += 8) {
       for (j = 0; j < M; j += 8) {
-        if (i == j) {
-          for (bi = 0; bi < 4; bi++) {
-            tmp0 = A[i + bi][j + 0];
-            tmp1 = A[i + bi][j + 1];
-            tmp2 = A[i + bi][j + 2];
-            tmp3 = A[i + bi][j + 3];
-            tmp4 = A[i + bi][j + 4];
-            tmp5 = A[i + bi][j + 5];
-            tmp6 = A[i + bi][j + 6];
-            tmp7 = A[i + bi][j + 7];
-            B[j + 0][i + bi] = tmp0;
-            B[j + 1][i + bi] = tmp1;
-            B[j + 2][i + bi] = tmp2;
-            B[j + 3][i + bi] = tmp3;
-            B[j + 0][i + bi + 4] = tmp4;
-            B[j + 1][i + bi + 4] = tmp5;
-            B[j + 2][i + bi + 4] = tmp6;
-            B[j + 3][i + bi + 4] = tmp7;
-          }
-          for (bi = 0; bi < 4; bi++) {
-            tmp0 = A[i + 4][j + bi];
-            tmp1 = A[i + 5][j + bi];
-            tmp2 = A[i + 6][j + bi];
-            tmp3 = A[i + 7][j + bi];
-            tmp4 = A[i + 4][j + bi + 4];
-            tmp5 = A[i + 5][j + bi + 4];
-            tmp6 = A[i + 6][j + bi + 4];
-            tmp7 = A[i + 7][j + bi + 4];
+        for (bi = 0; bi < 4; bi++) {
+          tmp0 = A[i + bi][j + 0];
+          tmp1 = A[i + bi][j + 1];
+          tmp2 = A[i + bi][j + 2];
+          tmp3 = A[i + bi][j + 3];
+          tmp4 = A[i + bi][j + 4];
+          tmp5 = A[i + bi][j + 5];
+          tmp6 = A[i + bi][j + 6];
+          tmp7 = A[i + bi][j + 7];
+          B[j + 0][i + bi] = tmp0;
+          B[j + 1][i + bi] = tmp1;
+          B[j + 2][i + bi] = tmp2;
+          B[j + 3][i + bi] = tmp3;
+          B[j + 0][i + bi + 4] = tmp4;
+          B[j + 1][i + bi + 4] = tmp5;
+          B[j + 2][i + bi + 4] = tmp6;
+          B[j + 3][i + bi + 4] = tmp7;
+        }
+        for (bi = 0; bi < 4; bi++) {
+          tmp0 = A[i + 4][j + bi];
+          tmp1 = A[i + 5][j + bi];
+          tmp2 = A[i + 6][j + bi];
+          tmp3 = A[i + 7][j + bi];
+          tmp4 = A[i + 4][j + bi + 4];
+          tmp5 = A[i + 5][j + bi + 4];
+          tmp6 = A[i + 6][j + bi + 4];
+          tmp7 = A[i + 7][j + bi + 4];
 
-            bj = B[j + bi][i + 4];
-            B[j + bi][i + 4] = tmp0;
-            tmp0 = bj;
-            bj = B[j + bi][i + 5];
-            B[j + bi][i + 5] = tmp1;
-            tmp1 = bj;
-            bj = B[j + bi][i + 6];
-            B[j + bi][i + 6] = tmp2;
-            tmp2 = bj;
-            bj = B[j + bi][i + 7];
-            B[j + bi][i + 7] = tmp3;
-            tmp3 = bj;
+          bj = B[j + bi][i + 4];
+          B[j + bi][i + 4] = tmp0;
+          tmp0 = bj;
+          bj = B[j + bi][i + 5];
+          B[j + bi][i + 5] = tmp1;
+          tmp1 = bj;
+          bj = B[j + bi][i + 6];
+          B[j + bi][i + 6] = tmp2;
+          tmp2 = bj;
+          bj = B[j + bi][i + 7];
+          B[j + bi][i + 7] = tmp3;
+          tmp3 = bj;
 
-            B[j + bi + 4][i + 0] = tmp0;
-            B[j + bi + 4][i + 1] = tmp1;
-            B[j + bi + 4][i + 2] = tmp2;
-            B[j + bi + 4][i + 3] = tmp3;
-            B[j + bi + 4][i + 4] = tmp4;
-            B[j + bi + 4][i + 5] = tmp5;
-            B[j + bi + 4][i + 6] = tmp6;
-            B[j + bi + 4][i + 7] = tmp7;
-          }
-        } else {
-          for (bi = 0; bi < 4; bi++)
-            for (bj = 0; bj < 4; bj++)
-              B[j + bj][i + bi] = A[i + bi][j + bj];
-          for (bi = 0; bi < 4; bi++)
-            for (bj = 4; bj < 8; bj++)
-              B[j + bj][i + bi] = A[i + bi][j + bj];
-          for (bi = 4; bi < 8; bi++)
-            for (bj = 4; bj < 8; bj++)
-              B[j + bj][i + bi] = A[i + bi][j + bj];
-          for (bi = 4; bi < 8; bi++)
-            for (bj = 0; bj < 4; bj++)
-              B[j + bj][i + bi] = A[i + bi][j + bj];
+          B[j + bi + 4][i + 0] = tmp0;
+          B[j + bi + 4][i + 1] = tmp1;
+          B[j + bi + 4][i + 2] = tmp2;
+          B[j + bi + 4][i + 3] = tmp3;
+          B[j + bi + 4][i + 4] = tmp4;
+          B[j + bi + 4][i + 5] = tmp5;
+          B[j + bi + 4][i + 6] = tmp6;
+          B[j + bi + 4][i + 7] = tmp7;
         }
       }
     }
