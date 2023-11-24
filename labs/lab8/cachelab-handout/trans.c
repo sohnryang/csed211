@@ -8,7 +8,6 @@
  * on a 1KB direct mapped cache with a block size of 32 bytes.
  */
 #include "cachelab.h"
-#include <stdio.h>
 
 int is_transpose(int M, int N, int A[N][M], int B[M][N]);
 
