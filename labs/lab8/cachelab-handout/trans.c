@@ -41,18 +41,48 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N]) {
   else if (M == 64)
     for (i = 0; i < N; i += 8) {
       for (j = 0; j < M; j += 8) {
-        for (bi = 0; bi < 4; bi++)
+        if (i == j) {
+          for (bi = 0; bi < 4; bi++)
+            for (bj = bi + 1; bj < 4; bj++)
+              B[j + bj][i + bi] = A[i + bi][j + bj];
           for (bj = 0; bj < 4; bj++)
-            B[j + bj][i + bi] = A[i + bi][j + bj];
-        for (bi = 0; bi < 4; bi++)
-          for (bj = 4; bj < 8; bj++)
-            B[j + bj][i + bi] = A[i + bi][j + bj];
-        for (bi = 4; bi < 8; bi++)
-          for (bj = 4; bj < 8; bj++)
-            B[j + bj][i + bi] = A[i + bi][j + bj];
-        for (bi = 4; bi < 8; bi++)
+            for (bi = bj; bi < 4; bi++)
+              B[j + bj][i + bi] = A[i + bi][j + bj];
+
+          for (bi = 4; bi < 8; bi++)
+            for (bj = bi - 3; bj < 4; bj++)
+              B[j + bj][i + bi] = A[i + bi][j + bj];
           for (bj = 0; bj < 4; bj++)
-            B[j + bj][i + bi] = A[i + bi][j + bj];
+            for (bi = bj + 4; bi < 8; bi++)
+              B[j + bj][i + bi] = A[i + bi][j + bj];
+
+          for (bi = 0; bi < 4; bi++)
+            for (bj = bi + 5; bj < 8; bj++)
+              B[j + bj][i + bi] = A[i + bi][j + bj];
+          for (bj = 4; bj < 8; bj++)
+            for (bi = bj - 4; bi < 4; bi++)
+              B[j + bj][i + bi] = A[i + bi][j + bj];
+
+          for (bi = 4; bi < 8; bi++)
+            for (bj = bi + 1; bj < 8; bj++)
+              B[j + bj][i + bi] = A[i + bi][j + bj];
+          for (bj = 4; bj < 8; bj++)
+            for (bi = bj; bi < 8; bi++)
+              B[j + bj][i + bi] = A[i + bi][j + bj];
+        } else {
+          for (bi = 0; bi < 4; bi++)
+            for (bj = 0; bj < 4; bj++)
+              B[j + bj][i + bi] = A[i + bi][j + bj];
+          for (bi = 0; bi < 4; bi++)
+            for (bj = 4; bj < 8; bj++)
+              B[j + bj][i + bi] = A[i + bi][j + bj];
+          for (bi = 4; bi < 8; bi++)
+            for (bj = 4; bj < 8; bj++)
+              B[j + bj][i + bi] = A[i + bi][j + bj];
+          for (bi = 4; bi < 8; bi++)
+            for (bj = 0; bj < 4; bj++)
+              B[j + bj][i + bi] = A[i + bi][j + bj];
+        }
       }
     }
 }
