@@ -269,8 +269,6 @@ int parseline(const char *cmdline, char **argv) {
  *    it immediately.
  */
 int builtin_cmd(char **argv) {
-  int jid;
-
   if (strcmp(argv[0], "quit") == 0)
     exit(0);
   else if (strcmp(argv[0], "jobs") == 0) {
