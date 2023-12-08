@@ -444,7 +444,6 @@ void sigint_handler(int sig) {
  */
 void sigtstp_handler(int sig) {
   pid_t pid;
-  struct job_t *job;
 
   pid = fgpid(jobs);
   if (pid == 0)
