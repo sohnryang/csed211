@@ -6,9 +6,11 @@
 #include <ctype.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -161,7 +163,52 @@ int main(int argc, char **argv) {
  * background children don't receive SIGINT (SIGTSTP) from the kernel
  * when we type ctrl-c (ctrl-z) at the keyboard.
  */
-void eval(char *cmdline) { return; }
+void eval(char *cmdline) {
+  int exec_res;
+  char *argv[MAXARGS];
+  bool is_bg, is_builtin;
+  pid_t child_pid;
+  sigset_t sigchld_mask, prev_mask, all_mask;
+
+  is_bg = parseline(cmdline, argv);
+  if (argv[0] == NULL)
+    return;
+
+  is_builtin = builtin_cmd(argv);
+  if (is_builtin)
+    return;
+
+  sigemptyset(&sigchld_mask);
+  sigaddset(&sigchld_mask, SIGCHLD);
+  sigfillset(&all_mask);
+
+  sigprocmask(SIG_BLOCK, &sigchld_mask, &prev_mask);
+  child_pid = fork();
+  if (child_pid == -1) { /* if fork failed */
+    perror("tsh");
+    return;
+  } else if (child_pid == 0) { /* if child process */
+    if (setpgid(0, 0) == -1) {
+      perror(argv[0]);
+      exit(127);
+    }
+    sigprocmask(SIG_SETMASK, &prev_mask, NULL);
+    exec_res = execve(argv[0], argv, environ);
+    if (exec_res == -1) {
+      if (errno == ENOENT)
+        fprintf(stderr, "%s: Command not found\n", argv[0]);
+      else
+        perror("tsh");
+      exit(127); /* most shells use this return code */
+    }
+  }
+  sigprocmask(SIG_SETMASK, &all_mask, NULL);
+  addjob(jobs, child_pid, is_bg ? BG : FG, cmdline);
+  sigprocmask(SIG_SETMASK, &prev_mask, NULL);
+
+  if (!is_bg)
+    waitfg(child_pid);
+}
 
 /*
  * parseline - Parse the command line and build the argv array.
@@ -221,17 +268,85 @@ int parseline(const char *cmdline, char **argv) {
  * builtin_cmd - If the user has typed a built-in command then execute
  *    it immediately.
  */
-int builtin_cmd(char **argv) { return 0; /* not a builtin command */ }
+int builtin_cmd(char **argv) {
+  int jid;
+
+  if (strcmp(argv[0], "quit") == 0)
+    exit(0);
+  else if (strcmp(argv[0], "jobs") == 0) {
+    listjobs(jobs);
+    return 1;
+  } else if (strcmp(argv[0], "bg") == 0 || strcmp(argv[0], "fg") == 0) {
+    do_bgfg(argv);
+    return 1;
+  } else if (strcmp(argv[0], "kill") == 0) {
+    return 1;
+  }
+  return 0;
+}
 
 /*
  * do_bgfg - Execute the builtin bg and fg commands
  */
-void do_bgfg(char **argv) { return; }
+void do_bgfg(char **argv) {
+  int jid;
+  pid_t pid;
+  struct job_t *job;
+
+  if (argv[1] == NULL) {
+    fprintf(stderr, "%s command requires PID or %%jobid argument\n", argv[0]);
+    return;
+  }
+
+  if (argv[1][0] == '%') {
+    jid = (int)strtol(argv[1] + 1, NULL, 10);
+    if (jid == 0 && (errno == EINVAL || errno == ERANGE)) {
+      fprintf(stderr, "%s: argument must be a PID or %%jobid\n", argv[0]);
+      return;
+    }
+  } else {
+    pid = (int)strtol(argv[1], NULL, 10);
+    if (pid == 0 && (errno == EINVAL || errno == ERANGE)) {
+      fprintf(stderr, "%s: argument must be a PID or %%jobid\n", argv[0]);
+      return;
+    }
+    jid = pid2jid(pid);
+    if (jid == 0) {
+      fprintf(stderr, "(%d): No such process\n", pid);
+      return;
+    }
+  }
+
+  job = getjobjid(jobs, jid);
+  if (job == NULL) {
+    fprintf(stderr, "%%%d: No such job\n", jid);
+    return;
+  }
+
+  if (argv[0][0] == 'f') {
+    job->state = FG;
+    kill(job->pid, SIGCONT);
+    waitfg(job->pid);
+  } else {
+    job->state = BG;
+    kill(job->pid, SIGCONT);
+  }
+}
 
 /*
  * waitfg - Block until process pid is no longer the foreground process
  */
-void waitfg(pid_t pid) { return; }
+void waitfg(pid_t pid) {
+  struct job_t *job;
+
+  while (true) {
+    job = getjobpid(jobs, pid);
+    if (job == NULL || job->state != FG)
+      break;
+
+    sleep(1);
+  }
+}
 
 /*****************
  * Signal handlers
@@ -244,21 +359,73 @@ void waitfg(pid_t pid) { return; }
  *     available zombie children, but doesn't wait for any other
  *     currently running children to terminate.
  */
-void sigchld_handler(int sig) { return; }
+void sigchld_handler(int sig) {
+  int child_status, signal_num;
+  pid_t waited_pid;
+  struct job_t *job;
+  bool should_delete = false;
+
+  while (true) {
+    /* Don't wait if there is no available child */
+    waited_pid = waitpid(-1, &child_status, WNOHANG | WUNTRACED);
+    if (waited_pid == -1 || waited_pid == 0)
+      break;
+
+    job = getjobpid(jobs, waited_pid);
+    if (job == NULL) {
+      fprintf(stderr, "%d: Job not found\n", waited_pid);
+      continue;
+    }
+
+    if (WIFEXITED(child_status))
+      should_delete = true;
+    else if (WIFSIGNALED(child_status)) {
+      should_delete = true;
+      signal_num = WTERMSIG(child_status);
+      fprintf(stderr, "Job (%d) terminated by signal %d\n", waited_pid,
+              signal_num);
+    }
+
+    if (should_delete && !deletejob(jobs, waited_pid))
+      fprintf(stderr, "%d: Could not delete job\n", waited_pid);
+  }
+}
 
 /*
  * sigint_handler - The kernel sends a SIGINT to the shell whenver the
  *    user types ctrl-c at the keyboard.  Catch it and send it along
  *    to the foreground job.
  */
-void sigint_handler(int sig) { return; }
+void sigint_handler(int sig) {
+  pid_t pid;
+
+  pid = fgpid(jobs);
+  if (pid == 0)
+    return;
+  kill(pid, SIGINT);
+}
 
 /*
  * sigtstp_handler - The kernel sends a SIGTSTP to the shell whenever
  *     the user types ctrl-z at the keyboard. Catch it and suspend the
  *     foreground job by sending it a SIGTSTP.
  */
-void sigtstp_handler(int sig) { return; }
+void sigtstp_handler(int sig) {
+  pid_t pid;
+  struct job_t *job;
+
+  pid = fgpid(jobs);
+  if (pid == 0)
+    return;
+  kill(pid, SIGTSTP);
+
+  job = getjobpid(jobs, pid);
+  if (job == NULL) {
+    fprintf(stderr, "%d: Job not found\n", pid);
+    return;
+  }
+  job->state = ST;
+}
 
 /*********************
  * End signal handlers
