@@ -332,12 +332,12 @@ void do_bgfg(char **argv) {
 
   if (argv[0][0] == 'f') {
     job->state = FG;
-    kill(job->pid, SIGCONT);
+    kill(-job->pid, SIGCONT);
     waitfg(job->pid);
   } else {
     job->state = BG;
     printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
-    kill(job->pid, SIGCONT);
+    kill(-job->pid, SIGCONT);
   }
 }
 
@@ -415,7 +415,7 @@ void sigint_handler(int sig) {
   pid = fgpid(jobs);
   if (pid == 0)
     return;
-  kill(pid, SIGINT);
+  kill(-pid, SIGINT);
 }
 
 /*
@@ -430,7 +430,7 @@ void sigtstp_handler(int sig) {
   pid = fgpid(jobs);
   if (pid == 0)
     return;
-  kill(pid, SIGTSTP);
+  kill(-pid, SIGTSTP);
 }
 
 /*********************
