@@ -290,6 +290,7 @@ void do_bgfg(char **argv) {
   int jid;
   pid_t pid;
   struct job_t *job;
+  char *endptr;
 
   if (argv[1] == NULL) {
     fprintf(stderr, "%s command requires PID or %%jobid argument\n", argv[0]);
@@ -297,14 +298,16 @@ void do_bgfg(char **argv) {
   }
 
   if (argv[1][0] == '%') {
-    jid = (int)strtol(argv[1] + 1, NULL, 10);
-    if (jid == 0 && (errno == EINVAL || errno == ERANGE)) {
+    errno = 0;
+    jid = (int)strtol(argv[1] + 1, &endptr, 10);
+    if (argv[1] + 1 == endptr || (jid == 0 && errno != 0)) {
       fprintf(stderr, "%s: argument must be a PID or %%jobid\n", argv[0]);
       return;
     }
   } else {
-    pid = (int)strtol(argv[1], NULL, 10);
-    if (pid == 0 && (errno == EINVAL || errno == ERANGE)) {
+    errno = 0;
+    pid = (int)strtol(argv[1], &endptr, 10);
+    if (argv[1] == endptr || (pid == 0 && errno != 0)) {
       fprintf(stderr, "%s: argument must be a PID or %%jobid\n", argv[0]);
       return;
     }
