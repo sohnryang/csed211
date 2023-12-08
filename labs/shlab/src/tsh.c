@@ -166,9 +166,10 @@ int main(int argc, char **argv) {
 void eval(char *cmdline) {
   int exec_res;
   char *argv[MAXARGS];
-  bool is_bg, is_builtin;
+  bool is_bg, is_builtin, add_ok;
   pid_t child_pid;
   sigset_t sigchld_mask, prev_mask, all_mask;
+  struct job_t *job;
 
   is_bg = parseline(cmdline, argv);
   if (argv[0] == NULL)
@@ -203,8 +204,10 @@ void eval(char *cmdline) {
     }
   }
   sigprocmask(SIG_SETMASK, &all_mask, NULL);
-  addjob(jobs, child_pid, is_bg ? BG : FG, cmdline);
+  add_ok = addjob(jobs, child_pid, is_bg ? BG : FG, cmdline);
   sigprocmask(SIG_SETMASK, &prev_mask, NULL);
+  if (!add_ok)
+    fprintf(stderr, "tsh: adding to joblist failed\n");
 
   job = getjobpid(jobs, child_pid);
   if (is_bg)
