@@ -392,6 +392,11 @@ void sigchld_handler(int sig) {
       signal_num = WTERMSIG(child_status);
       fprintf(stderr, "Job [%d] (%d) terminated by signal %d\n", job->jid,
               waited_pid, signal_num);
+    } else if (WIFSTOPPED(child_status)) {
+      signal_num = WSTOPSIG(child_status);
+      job->state = ST;
+      fprintf(stderr, "Job [%d] (%d) stopped by signal %d\n", job->jid,
+              waited_pid, signal_num);
     }
 
     if (should_delete && !deletejob(jobs, waited_pid))
@@ -426,13 +431,6 @@ void sigtstp_handler(int sig) {
   if (pid == 0)
     return;
   kill(pid, SIGTSTP);
-
-  job = getjobpid(jobs, pid);
-  if (job == NULL) {
-    fprintf(stderr, "%d: Job not found\n", pid);
-    return;
-  }
-  job->state = ST;
 }
 
 /*********************
