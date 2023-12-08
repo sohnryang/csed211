@@ -179,35 +179,39 @@ void eval(char *cmdline) {
   if (is_builtin)
     return;
 
-  sigemptyset(&sigchld_mask);
-  sigaddset(&sigchld_mask, SIGCHLD);
-  sigfillset(&all_mask);
+  if (sigemptyset(&sigchld_mask) == -1)
+    unix_error("tsh: cannot create empty mask");
+  if (sigaddset(&sigchld_mask, SIGCHLD) == -1)
+    unix_error("tsh: cannot set mask");
+  if (sigfillset(&all_mask) == -1)
+    unix_error("tsh: cannot create filled mask");
 
-  sigprocmask(SIG_BLOCK, &sigchld_mask, &prev_mask);
+  if (sigprocmask(SIG_BLOCK, &sigchld_mask, &prev_mask) == -1)
+    unix_error("tsh: cannot block SIGCHLD");
   child_pid = fork();
-  if (child_pid == -1) { /* if fork failed */
-    perror("tsh");
-    return;
-  } else if (child_pid == 0) { /* if child process */
-    if (setpgid(0, 0) == -1) {
-      perror(argv[0]);
-      exit(127);
-    }
-    sigprocmask(SIG_SETMASK, &prev_mask, NULL);
+  if (child_pid == -1)
+    unix_error("tsh: fork failed");
+  else if (child_pid == 0) { /* if child process */
+    if (setpgid(0, 0) == -1)
+      unix_error("tsh: cannot set process group");
+    if (sigprocmask(SIG_SETMASK, &prev_mask, NULL) == -1)
+      unix_error("tsh: cannot restore previous signal mask");
     exec_res = execve(argv[0], argv, environ);
     if (exec_res == -1) {
       if (errno == ENOENT)
         fprintf(stderr, "%s: Command not found\n", argv[0]);
       else
-        perror("tsh");
+        unix_error("tsh: execve failed");
       exit(127); /* most shells use this return code */
     }
   }
-  sigprocmask(SIG_SETMASK, &all_mask, NULL);
+  if (sigprocmask(SIG_SETMASK, &all_mask, NULL) == -1)
+    unix_error("tsh: cannot block all signals");
   add_ok = addjob(jobs, child_pid, is_bg ? BG : FG, cmdline);
-  sigprocmask(SIG_SETMASK, &prev_mask, NULL);
+  if (sigprocmask(SIG_SETMASK, &prev_mask, NULL) == -1)
+    unix_error("tsh: cannot restore previous signal mask");
   if (!add_ok)
-    fprintf(stderr, "tsh: adding to joblist failed\n");
+    app_error("tsh: cannot add to job list");
 
   job = getjobpid(jobs, child_pid);
   if (is_bg)
@@ -299,7 +303,9 @@ void do_bgfg(char **argv) {
   char *endptr;
 
   if (argv[1] == NULL) {
-    fprintf(stderr, "%s command requires PID or %%jobid argument\n", argv[0]);
+    if (fprintf(stderr, "%s command requires PID or %%jobid argument\n",
+                argv[0]) < 0)
+      unix_error("tsh: cannot print error message");
     return;
   }
 
@@ -307,37 +313,45 @@ void do_bgfg(char **argv) {
     errno = 0;
     jid = (int)strtol(argv[1] + 1, &endptr, 10);
     if (argv[1] + 1 == endptr || (jid == 0 && errno != 0)) {
-      fprintf(stderr, "%s: argument must be a PID or %%jobid\n", argv[0]);
+      if (fprintf(stderr, "%s: argument must be a PID or %%jobid\n", argv[0]) <
+          0)
+        unix_error("tsh: cannot print error message");
       return;
     }
   } else {
     errno = 0;
     pid = (int)strtol(argv[1], &endptr, 10);
     if (argv[1] == endptr || (pid == 0 && errno != 0)) {
-      fprintf(stderr, "%s: argument must be a PID or %%jobid\n", argv[0]);
+      if (fprintf(stderr, "%s: argument must be a PID or %%jobid\n", argv[0]) <
+          0)
+        unix_error("tsh: cannot print error message");
       return;
     }
     jid = pid2jid(pid);
     if (jid == 0) {
-      fprintf(stderr, "(%d): No such process\n", pid);
+      if (fprintf(stderr, "(%d): No such process\n", pid) < 0)
+        unix_error("tsh: cannot print error message");
       return;
     }
   }
 
   job = getjobjid(jobs, jid);
   if (job == NULL) {
-    fprintf(stderr, "%%%d: No such job\n", jid);
+    if (fprintf(stderr, "%%%d: No such job\n", jid) < 0)
+      unix_error("tsh: cannot print error message");
     return;
   }
 
   if (argv[0][0] == 'f') {
     job->state = FG;
-    kill(-job->pid, SIGCONT);
+    if (kill(-job->pid, SIGCONT) == -1)
+      unix_error("tsh: cannot send SIGCONT to process group");
     waitfg(job->pid);
   } else {
     job->state = BG;
     printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
-    kill(-job->pid, SIGCONT);
+    if (kill(-job->pid, SIGCONT) == -1)
+      unix_error("tsh: cannot send SIGCONT to process group");
   }
 }
 
@@ -381,7 +395,8 @@ void sigchld_handler(int sig) {
 
     job = getjobpid(jobs, waited_pid);
     if (job == NULL) {
-      fprintf(stderr, "%d: Job not found\n", waited_pid);
+      if (fprintf(stderr, "%d: Job not found\n", waited_pid))
+        unix_error("tsh: cannot print error message");
       continue;
     }
 
@@ -390,17 +405,20 @@ void sigchld_handler(int sig) {
     else if (WIFSIGNALED(child_status)) {
       should_delete = true;
       signal_num = WTERMSIG(child_status);
-      fprintf(stderr, "Job [%d] (%d) terminated by signal %d\n", job->jid,
-              waited_pid, signal_num);
+      if (fprintf(stderr, "Job [%d] (%d) terminated by signal %d\n", job->jid,
+                  waited_pid, signal_num) < 0)
+        unix_error("tsh: cannot print error message");
     } else if (WIFSTOPPED(child_status)) {
       signal_num = WSTOPSIG(child_status);
       job->state = ST;
-      fprintf(stderr, "Job [%d] (%d) stopped by signal %d\n", job->jid,
-              waited_pid, signal_num);
+      if (fprintf(stderr, "Job [%d] (%d) stopped by signal %d\n", job->jid,
+                  waited_pid, signal_num) < 0)
+        unix_error("tsh: cannot print error message");
     }
 
     if (should_delete && !deletejob(jobs, waited_pid))
-      fprintf(stderr, "%d: Could not delete job\n", waited_pid);
+      if (fprintf(stderr, "%d: Could not delete job\n", waited_pid) < 0)
+        unix_error("tsh: cannot print error message");
   }
 }
 
@@ -415,7 +433,8 @@ void sigint_handler(int sig) {
   pid = fgpid(jobs);
   if (pid == 0)
     return;
-  kill(-pid, SIGINT);
+  if (kill(-pid, SIGINT) == -1)
+    unix_error("tsh: cannot send SIGINT to process group");
 }
 
 /*
@@ -430,7 +449,8 @@ void sigtstp_handler(int sig) {
   pid = fgpid(jobs);
   if (pid == 0)
     return;
-  kill(-pid, SIGTSTP);
+  if (kill(-pid, SIGTSTP) == -1)
+    unix_error("tsh: cannot send SIGTSTP to process group");
 }
 
 /*********************
