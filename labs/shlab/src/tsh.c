@@ -1,7 +1,7 @@
 /*
  * tsh - A tiny shell program with job control
  *
- * <Put your name and login ID here>
+ * Ryang Sohn <ryangsohn@postech.ac.kr> 20220323
  */
 #include <ctype.h>
 #include <errno.h>
