@@ -206,7 +206,10 @@ void eval(char *cmdline) {
   addjob(jobs, child_pid, is_bg ? BG : FG, cmdline);
   sigprocmask(SIG_SETMASK, &prev_mask, NULL);
 
-  if (!is_bg)
+  job = getjobpid(jobs, child_pid);
+  if (is_bg)
+    printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+  else
     waitfg(child_pid);
 }
 
@@ -330,6 +333,7 @@ void do_bgfg(char **argv) {
     waitfg(job->pid);
   } else {
     job->state = BG;
+    printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
     kill(job->pid, SIGCONT);
   }
 }
@@ -383,8 +387,8 @@ void sigchld_handler(int sig) {
     else if (WIFSIGNALED(child_status)) {
       should_delete = true;
       signal_num = WTERMSIG(child_status);
-      fprintf(stderr, "Job (%d) terminated by signal %d\n", waited_pid,
-              signal_num);
+      fprintf(stderr, "Job [%d] (%d) terminated by signal %d\n", job->jid,
+              waited_pid, signal_num);
     }
 
     if (should_delete && !deletejob(jobs, waited_pid))
