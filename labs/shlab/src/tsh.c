@@ -310,8 +310,6 @@ int builtin_cmd(char **argv) {
              strcmp(argv[0], "fg") == 0) { /* bg or fg command. */
     do_bgfg(argv);
     return 1;
-  } else if (strcmp(argv[0], "kill") == 0) { /* kill command. */
-    return 1;
   }
   return 0;
 }
