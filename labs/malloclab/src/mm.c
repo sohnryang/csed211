@@ -57,6 +57,8 @@ struct header {
 #define PACK_SIZE(size, inuse, prev_inuse)                                     \
   ((size) | ((inuse) << 1) | (prev_inuse))
 
+static struct header *freelist;
+
 /*
  * expand_heap - expand heap by `words` words.
  * Returns a pointer to a block created by expansion. Returns NULL if sbrk
@@ -83,7 +85,8 @@ static word_t *expand_heap(size_t words) {
  * mm_init - initialize the malloc package.
  */
 int mm_init(void) {
-  word_t *prologue_block;
+  word_t *prologue_block, *init_block;
+  struct header *init_block_header;
 
   prologue_block = mem_sbrk(4 * WORDSIZE);
   if (prologue_block == (void *)-1)
@@ -92,10 +95,16 @@ int mm_init(void) {
   prologue_block[0] = 0;
   prologue_block[1] = PACK_SIZE(8, 1, 0);
   prologue_block[2] = PACK_SIZE(8, 1, 0);
-  prologue_block[3] = PACK_SIZE(0, 1, 0);
+  prologue_block[3] = PACK_SIZE(0, 1, 1);
 
-  if (expand_heap(CHUNKSIZE / WORDSIZE) == NULL)
+  init_block = expand_heap(CHUNKSIZE / WORDSIZE);
+  if (init_block == NULL)
     return -1;
+
+  init_block_header = (struct header *)init_block;
+  init_block_header->prev = NULL;
+  init_block_header->next = NULL;
+  freelist = init_block_header;
   return 0;
 }
 
