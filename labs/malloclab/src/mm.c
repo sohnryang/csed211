@@ -44,7 +44,7 @@ struct header {
 /* DEREF_WORD - dereference word in `addr`. */
 #define DEREF_WORD(addr) (*((word_t *)addr))
 
-/* BLOCK_HEADER - get the header of a block in `addr`. */
+/* BLOCK_HEADER - get the pointer to header of a block in `addr`. */
 #define BLOCK_HEADER(addr) (((word_t *)addr) - 1)
 
 /* HEADER_SIZE - get the size of a block header. */
