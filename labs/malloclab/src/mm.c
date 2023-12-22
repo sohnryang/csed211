@@ -60,6 +60,9 @@ struct header {
 #define PACK_SIZE(size, inuse, prev_inuse)                                     \
   ((size) | ((inuse) << 1) | (prev_inuse))
 
+/* BLOCK_PAYLOAD - get the payload of a block in `addr`. */
+#define BLOCK_PAYLOAD(addr) (((word_t *)addr) + 1)
+
 static struct header *freelist;
 
 /*
