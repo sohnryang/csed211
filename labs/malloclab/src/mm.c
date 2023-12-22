@@ -74,6 +74,9 @@ struct header {
 /* FOOTER - get the pointer to footer of a block. */
 #define FOOTER(addr) ((word_t *)((uint8_t *)addr + HEADER_SIZE(*addr) - 4))
 
+/* NEXT_BLOCK - get the pointer to next block of a block. */
+#define NEXT_BLOCK(block) ((word_t *)((uint8_t *)block + HEADER_SIZE(*block)))
+
 /* PACK_SIZE - pack `size`, `inuse`, `prev_inuse` into a word. */
 #define PACK_SIZE(size, inuse, prev_inuse)                                     \
   ((size) | ((inuse) << 1) | (prev_inuse))
