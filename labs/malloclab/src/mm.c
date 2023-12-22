@@ -242,24 +242,52 @@ int mm_init(void) {
 }
 
 /*
- * mm_malloc - Allocate a block by incrementing the brk pointer.
- *     Always allocate a block whose size is a multiple of the alignment.
+ * mm_malloc - Allocate a block.
+ * Always allocate a block whose size is a multiple of the alignment. Looks for
+ * a free block in the free list, using best-fit strategy. If no free block is
+ * found, allocate a new block using `expand_heap`.
  */
 void *mm_malloc(size_t size) {
-  int newsize = ALIGN(size + SIZE_T_SIZE);
-  void *p = mem_sbrk(newsize);
-  if (p == (void *)-1)
-    return NULL;
-  else {
-    *(size_t *)p = size;
-    return (void *)((char *)p + SIZE_T_SIZE);
+  int newsize = ALIGN(size + WORDSIZE);
+  word_t *block = find_best_fit(newsize), *new_block, *next_block;
+
+  if (block == NULL) {
+    block = expand_heap(MAX(newsize, CHUNKSIZE) / WORDSIZE);
+    if (block == NULL)
+      return NULL;
+  } else {
+    list_remove((struct header *)block);
+    if (should_split(block, newsize)) {
+      new_block = split_block(block, newsize);
+      list_insert((struct header *)new_block);
+    }
   }
+
+  next_block = NEXT_BLOCK(block);
+  HEADER_PREVINUSE_SET(DEREF_FROM_NTH(next_block, 0));
+  HEADER_PREVINUSE_SET(*FOOTER(next_block));
+  HEADER_INUSE_SET(DEREF(block));
+
+  return (void *)(block + 1);
 }
 
 /*
- * mm_free - Freeing a block does nothing.
+ * mm_free - Free a block.
  */
-void mm_free(void *ptr) {}
+void mm_free(void *ptr) {
+  word_t *block = (word_t *)ptr - 1, *next_block;
+  size_t block_size = HEADER_SIZE(DEREF(block));
+
+  HEADER_INUSE_CLEAR(DEREF(block));
+  DEREF_FROM_NTH(block, block_size - WORDSIZE) = DEREF(block);
+
+  next_block = NEXT_BLOCK(block);
+  HEADER_PREVINUSE_CLEAR(DEREF(next_block));
+  if (!HEADER_INUSE(DEREF(next_block)))
+    HEADER_PREVINUSE_CLEAR(*FOOTER(next_block));
+
+  list_insert((struct header *)block);
+}
 
 /*
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
