@@ -78,7 +78,7 @@ static word_t *expand_heap(size_t words) {
 
   epilogue = DEREF_WORD(old_brk);
   new_block = old_brk;
-  new_block[0] = PACK_SIZE(expand_words, 0, HEADER_PREVINUSE(epilogue));
+  new_block[0] = PACK_SIZE(expand_size, 0, HEADER_PREVINUSE(epilogue));
   new_block[expand_words - 1] = new_block[0];
   new_block[expand_words] = PACK_SIZE(0, 1, 0);
   return new_block;
