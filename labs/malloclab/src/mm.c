@@ -129,6 +129,16 @@ static word_t *split_block(word_t *block, size_t size) {
 }
 
 /*
+ * should_split - check if `block` should be split, if only `size` bytes are
+ * needed.
+ * Returns true if a new block with minimal size of 4 words can be created.
+ */
+static bool should_split(word_t *block, size_t size) {
+  size_t block_size = HEADER_SIZE(block[0]);
+  return block_size >= size + 4 * WORDSIZE;
+}
+
+/*
  * list_remove - remove a block from the free list.
  */
 static void list_remove(struct header *block) {
