@@ -10,6 +10,7 @@
  * comment that gives a high level description of your solution.
  */
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +26,28 @@
 #define ALIGN(size) (((size) + (ALIGNMENT - 1)) & ~0x7)
 
 #define SIZE_T_SIZE (ALIGN(sizeof(size_t)))
+
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+#define MAX(x, y) (((x) < (y)) ? (y) : (x))
+
+typedef uint32_t word_t;
+#define WORDSIZE sizeof(word_t)
+
+/* DEREF_WORD - dereference word in `addr`. */
+#define DEREF_WORD(addr) (*((word_t *)addr))
+
+/* BLOCK_HEADER - get the header of a block in `addr`. */
+#define BLOCK_HEADER(addr) (((word_t *)addr) - 1)
+
+/* HEADER_INUSE - get the inuse bit of a block header. */
+#define HEADER_INUSE(header) (((header) & 2) >> 1)
+
+/* HEADER_PREVINUSE - get the prev_inuse bit of a block header. */
+#define HEADER_PREVINUSE(header) ((header) & 1)
+
+/* PACK_SIZE - pack `size`, `inuse`, `prev_inuse` into a word. */
+#define PACK_SIZE(size, inuse, prev_inuse)                                     \
+  ((size) | ((inuse) << 1) | (prev_inuse))
 
 /*
  * mm_init - initialize the malloc package.
