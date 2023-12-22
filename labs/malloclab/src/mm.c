@@ -71,6 +71,9 @@ struct header {
 /* HEADER_PREVINUSE_CLEAR - clear the prev_inuse bit of a block header. */
 #define HEADER_PREVINUSE_CLEAR(header) ((header) &= ~1)
 
+/* FOOTER - get the pointer to footer of a block. */
+#define FOOTER(addr) ((word_t *)((uint8_t *)addr + HEADER_SIZE(*addr) - 4))
+
 /* PACK_SIZE - pack `size`, `inuse`, `prev_inuse` into a word. */
 #define PACK_SIZE(size, inuse, prev_inuse)                                     \
   ((size) | ((inuse) << 1) | (prev_inuse))
