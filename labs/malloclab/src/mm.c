@@ -44,9 +44,6 @@ struct header {
 /* DEREF_WORD - dereference word in `addr`. */
 #define DEREF_WORD(addr) (*((word_t *)addr))
 
-/* BLOCK_HEADER - get the pointer to header of a block in `addr`. */
-#define BLOCK_HEADER(addr) (((word_t *)addr) - 1)
-
 /* HEADER_SIZE - get the size of a block header. */
 #define HEADER_SIZE(header) ((header) & ~3)
 
@@ -59,9 +56,6 @@ struct header {
 /* PACK_SIZE - pack `size`, `inuse`, `prev_inuse` into a word. */
 #define PACK_SIZE(size, inuse, prev_inuse)                                     \
   ((size) | ((inuse) << 1) | (prev_inuse))
-
-/* BLOCK_PAYLOAD - get the payload of a block in `addr`. */
-#define BLOCK_PAYLOAD(addr) (((word_t *)addr) + 1)
 
 static struct header *freelist;
 
