@@ -32,6 +32,7 @@
 
 typedef uint32_t word_t;
 #define WORDSIZE sizeof(word_t)
+#define CHUNKSIZE (1 << 12)
 
 /* DEREF_WORD - dereference word in `addr`. */
 #define DEREF_WORD(addr) (*((word_t *)addr))
@@ -74,7 +75,22 @@ static word_t *expand_heap(size_t words) {
 /*
  * mm_init - initialize the malloc package.
  */
-int mm_init(void) { return 0; }
+int mm_init(void) {
+  word_t *prologue_block;
+
+  prologue_block = mem_sbrk(4 * WORDSIZE);
+  if (prologue_block == (void *)-1)
+    return -1;
+
+  prologue_block[0] = 0;
+  prologue_block[1] = PACK_SIZE(8, 1, 0);
+  prologue_block[2] = PACK_SIZE(8, 1, 0);
+  prologue_block[3] = PACK_SIZE(0, 1, 0);
+
+  if (expand_heap(CHUNKSIZE / WORDSIZE) == NULL)
+    return -1;
+  return 0;
+}
 
 /*
  * mm_malloc - Allocate a block by incrementing the brk pointer.
