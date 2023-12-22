@@ -115,7 +115,6 @@ static word_t *find_best_fit(size_t size) {
  */
 static word_t *split_block(word_t *block, size_t size) {
   size_t block_size = HEADER_SIZE(block[0]);
-  word_t *new_block;
   int prev_inuse = HEADER_PREVINUSE(block[0]);
 
   if (block_size < size + 2)
