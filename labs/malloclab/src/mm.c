@@ -150,9 +150,9 @@ static word_t *split_block(word_t *block, size_t size) {
     return block;
 
   DEREF_FROM_NTH(block, 0) = PACK_SIZE(size, 0, prev_inuse);
-  DEREF_FROM_NTH(block, size - 1) = block[0];
+  DEREF_FROM_NTH(block, size - WORDSIZE) = block[0];
   DEREF_FROM_NTH(block, size) = PACK_SIZE(block_size - size, 0, 0);
-  DEREF_FROM_NTH(block, block_size - 1) = DEREF_FROM_NTH(block, size);
+  DEREF_FROM_NTH(block, block_size - WORDSIZE) = DEREF_FROM_NTH(block, size);
   return &DEREF_FROM_NTH(block, size);
 }
 
