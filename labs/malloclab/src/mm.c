@@ -166,6 +166,10 @@ static bool should_split(word_t *block, size_t size) {
   return block_size >= size + 4 * WORDSIZE;
 }
 
+/*
+ * list_insert - insert a block into the free list.
+ * The free list is sorted by address.
+ */
 static void list_insert(struct header *block) {
   struct header *current;
 
