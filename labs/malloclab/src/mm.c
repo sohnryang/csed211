@@ -44,8 +44,11 @@ struct header {
   struct header *next;
 };
 
-/* DEREF_WORD - dereference word in `addr`. */
-#define DEREF_WORD(addr) (*((word_t *)addr))
+/* DEREF - dereference word in `addr`. */
+#define DEREF(addr) (*((word_t *)addr))
+
+/* DEREF_FROM_NTH - dereference word in `addr` from `n`th byte. */
+#define DEREF_FROM_NTH(addr, n) (*((word_t *)((uint8_t *)addr + n)))
 
 /* HEADER_SIZE - get the size of a block header. */
 #define HEADER_SIZE(header) ((header) & ~3)
@@ -60,6 +63,9 @@ struct header {
 #define PACK_SIZE(size, inuse, prev_inuse)                                     \
   ((size) | ((inuse) << 1) | (prev_inuse))
 
+/* PAYLOAD_HEADER - get the pointer to header of a block from its payload. */
+#define PAYLOAD_HEADER(payload) ((word_t *)(payload)-1)
+
 static struct header *freelist;
 
 /*
@@ -70,17 +76,19 @@ static struct header *freelist;
 static word_t *expand_heap(size_t words) {
   size_t expand_words = (words % 2 ? words + 1 : words),
          expand_size = WORDSIZE * expand_words;
-  void *old_brk = mem_sbrk(expand_size);
+  void *new_block_payload = mem_sbrk(expand_size);
   word_t *new_block, epilogue;
 
-  if (old_brk == (void *)-1)
+  if (new_block_payload == (void *)-1)
     return NULL;
 
-  epilogue = DEREF_WORD(old_brk);
-  new_block = old_brk;
-  new_block[0] = PACK_SIZE(expand_size, 0, HEADER_PREVINUSE(epilogue));
-  new_block[expand_words - 1] = new_block[0];
-  new_block[expand_words] = PACK_SIZE(0, 1, 0);
+  epilogue = DEREF(PAYLOAD_HEADER(new_block_payload));
+  new_block = PAYLOAD_HEADER(new_block_payload);
+  DEREF_FROM_NTH(new_block, 0) =
+      PACK_SIZE(expand_size, 0, HEADER_PREVINUSE(epilogue));
+  DEREF_FROM_NTH(new_block, expand_size - WORDSIZE) =
+      DEREF_FROM_NTH(new_block, 0);
+  DEREF_FROM_NTH(new_block, expand_size) = PACK_SIZE(0, 1, 0);
   return new_block;
 }
 
@@ -123,11 +131,11 @@ static word_t *split_block(word_t *block, size_t size) {
   if (block_size < size + 2)
     return block;
 
-  block[0] = PACK_SIZE(size, 0, prev_inuse);
-  block[size - 1] = block[0];
-  block[size] = PACK_SIZE(block_size - size, 0, 0);
-  block[block_size - 1] = block[size];
-  return block + size;
+  DEREF_FROM_NTH(block, 0) = PACK_SIZE(size, 0, prev_inuse);
+  DEREF_FROM_NTH(block, size - 1) = block[0];
+  DEREF_FROM_NTH(block, size) = PACK_SIZE(block_size - size, 0, 0);
+  DEREF_FROM_NTH(block, block_size - 1) = DEREF_FROM_NTH(block, size);
+  return &DEREF_FROM_NTH(block, size);
 }
 
 /*
