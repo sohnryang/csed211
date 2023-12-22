@@ -84,7 +84,7 @@ struct header {
 /* PAYLOAD_HEADER - get the pointer to header of a block from its payload. */
 #define PAYLOAD_HEADER(payload) ((word_t *)(payload)-1)
 
-static struct header *freelist;
+static struct header *freelist_head, *freelist_tail;
 
 /*
  * expand_heap - expand heap by `words` words.
@@ -118,11 +118,11 @@ static word_t *expand_heap(size_t words) {
 static word_t *find_best_fit(size_t size) {
   struct header *current_best, *current;
 
-  if (freelist == NULL)
+  if (freelist_head == NULL)
     return NULL;
 
-  current_best = freelist;
-  for (current = freelist; current != NULL; current = current->next) {
+  current_best = freelist_head;
+  for (current = freelist_head; current != NULL; current = current->next) {
     if (HEADER_SIZE(current_best->size_with_flags) < size)
       continue;
 
@@ -169,25 +169,35 @@ static bool should_split(word_t *block, size_t size) {
 static void list_insert(struct header *block) {
   struct header *current;
 
-  if (freelist == NULL) {
-    freelist = block;
+  if (freelist_head == NULL) {
+    freelist_head = block;
     block->prev = NULL;
     block->next = NULL;
+    freelist_tail = block;
     return;
   }
 
-  for (current = freelist; current != NULL; current = current->next) {
+  for (current = freelist_head; current != NULL; current = current->next) {
     if (current > block)
       break;
   }
 
-  block->prev = current->prev;
-  if (current->prev != NULL)
+  if (current == NULL) {
+    block->prev = freelist_tail;
+    block->next = NULL;
+    freelist_tail->next = block;
+    freelist_tail = block;
+  } else if (current->prev == NULL) {
+    block->prev = NULL;
+    block->next = current;
+    current->prev = block;
+    freelist_head = block;
+  } else {
+    block->prev = current->prev;
+    block->next = current;
     current->prev->next = block;
-  current->prev = block;
-  block->next = current;
-  if (current == freelist)
-    freelist = block;
+    current->prev = block;
+  }
 }
 
 /*
@@ -198,8 +208,10 @@ static void list_remove(struct header *block) {
     block->prev->next = block->next;
   if (block->next != NULL)
     block->next->prev = block->prev;
-  if (block == freelist)
-    freelist = block->next;
+  if (block == freelist_head)
+    freelist_head = block->next;
+  if (block == freelist_tail)
+    freelist_tail = block->prev;
 }
 
 /*
@@ -223,6 +235,8 @@ int mm_init(void) {
     return -1;
 
   init_block_header = (struct header *)init_block;
+  freelist_head = NULL;
+  freelist_tail = NULL;
   list_insert(init_block_header);
   return 0;
 }
