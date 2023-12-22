@@ -137,6 +137,30 @@ static bool should_split(word_t *block, size_t size) {
   return block_size >= size + 4 * WORDSIZE;
 }
 
+static void list_insert(struct header *block) {
+  struct header *current;
+
+  if (freelist == NULL) {
+    freelist = block;
+    block->prev = NULL;
+    block->next = NULL;
+    return;
+  }
+
+  for (current = freelist; current != NULL; current = current->next) {
+    if (current > block)
+      break;
+  }
+
+  block->prev = current->prev;
+  if (current->prev != NULL)
+    current->prev->next = block;
+  current->prev = block;
+  block->next = current;
+  if (current == freelist)
+    freelist = block;
+}
+
 /*
  * list_remove - remove a block from the free list.
  */
