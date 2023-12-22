@@ -112,6 +112,26 @@ static word_t *find_best_fit(size_t size) {
 }
 
 /*
+ * split_block - split a block into two blocks.
+ * The first block has size `size` and the second block has the remaining size.
+ * Returns a pointer to the second block.
+ */
+static word_t *split_block(word_t *block, size_t size) {
+  size_t block_size = HEADER_SIZE(block[0]);
+  word_t *new_block;
+  int prev_inuse = HEADER_PREVINUSE(block[0]);
+
+  if (block_size < size + 2)
+    return block;
+
+  block[0] = PACK_SIZE(size, 0, prev_inuse);
+  block[size - 1] = block[0];
+  block[size] = PACK_SIZE(block_size - size, 0, 0);
+  block[block_size - 1] = block[size];
+  return block + size;
+}
+
+/*
  * mm_init - initialize the malloc package.
  */
 int mm_init(void) {
