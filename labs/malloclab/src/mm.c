@@ -20,6 +20,8 @@
 #include "memlib.h"
 #include "mm.h"
 
+team_t team = {"", "", "", "", ""};
+
 /* single word (4) or double word (8) alignment */
 #define ALIGNMENT 8
 
