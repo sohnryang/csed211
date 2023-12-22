@@ -87,6 +87,58 @@ struct header {
 static struct header *freelist_head, *freelist_tail;
 
 /*
+ * list_insert - insert a block into the free list.
+ * The free list is sorted by address.
+ */
+static void list_insert(struct header *block) {
+  struct header *current;
+
+  if (freelist_head == NULL) {
+    freelist_head = block;
+    block->prev = NULL;
+    block->next = NULL;
+    freelist_tail = block;
+    return;
+  }
+
+  for (current = freelist_head; current != NULL; current = current->next) {
+    if (current > block)
+      break;
+  }
+
+  if (current == NULL) {
+    block->prev = freelist_tail;
+    block->next = NULL;
+    freelist_tail->next = block;
+    freelist_tail = block;
+  } else if (current->prev == NULL) {
+    block->prev = NULL;
+    block->next = current;
+    current->prev = block;
+    freelist_head = block;
+  } else {
+    block->prev = current->prev;
+    block->next = current;
+    current->prev->next = block;
+    current->prev = block;
+  }
+}
+
+/*
+ * list_remove - remove a block from the free list.
+ */
+static void list_remove(struct header *block) {
+  if (block->prev != NULL)
+    block->prev->next = block->next;
+  if (block->next != NULL)
+    block->next->prev = block->prev;
+  if (block == freelist_head)
+    freelist_head = block->next;
+  if (block == freelist_tail)
+    freelist_tail = block->prev;
+}
+
+/*
  * expand_heap - expand heap by `words` words.
  * Returns a pointer to a block created by expansion. Returns NULL if sbrk
  * failed.
@@ -164,58 +216,6 @@ static word_t *split_block(word_t *block, size_t size) {
 static bool should_split(word_t *block, size_t size) {
   size_t block_size = HEADER_SIZE(block[0]);
   return block_size >= size + 4 * WORDSIZE;
-}
-
-/*
- * list_insert - insert a block into the free list.
- * The free list is sorted by address.
- */
-static void list_insert(struct header *block) {
-  struct header *current;
-
-  if (freelist_head == NULL) {
-    freelist_head = block;
-    block->prev = NULL;
-    block->next = NULL;
-    freelist_tail = block;
-    return;
-  }
-
-  for (current = freelist_head; current != NULL; current = current->next) {
-    if (current > block)
-      break;
-  }
-
-  if (current == NULL) {
-    block->prev = freelist_tail;
-    block->next = NULL;
-    freelist_tail->next = block;
-    freelist_tail = block;
-  } else if (current->prev == NULL) {
-    block->prev = NULL;
-    block->next = current;
-    current->prev = block;
-    freelist_head = block;
-  } else {
-    block->prev = current->prev;
-    block->next = current;
-    current->prev->next = block;
-    current->prev = block;
-  }
-}
-
-/*
- * list_remove - remove a block from the free list.
- */
-static void list_remove(struct header *block) {
-  if (block->prev != NULL)
-    block->prev->next = block->next;
-  if (block->next != NULL)
-    block->next->prev = block->prev;
-  if (block == freelist_head)
-    freelist_head = block->next;
-  if (block == freelist_tail)
-    freelist_tail = block->prev;
 }
 
 /*
