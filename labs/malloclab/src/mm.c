@@ -205,9 +205,7 @@ int mm_init(void) {
     return -1;
 
   init_block_header = (struct header *)init_block;
-  init_block_header->prev = NULL;
-  init_block_header->next = NULL;
-  freelist = init_block_header;
+  list_insert(init_block_header);
   return 0;
 }
 
