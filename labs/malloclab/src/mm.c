@@ -56,8 +56,20 @@ struct header {
 /* HEADER_INUSE - get the inuse bit of a block header. */
 #define HEADER_INUSE(header) (((header) & 2) >> 1)
 
+/* HEADER_INUSE_SET - set the inuse bit of a block header. */
+#define HEADER_INUSE_SET(header) ((header) |= 2)
+
+/* HEADER_INUSE_CLEAR - clear the inuse bit of a block header. */
+#define HEADER_INUSE_CLEAR(header) ((header) &= ~2)
+
 /* HEADER_PREVINUSE - get the prev_inuse bit of a block header. */
 #define HEADER_PREVINUSE(header) ((header) & 1)
+
+/* HEADER_PREVINUSE_SET - set the prev_inuse bit of a block header. */
+#define HEADER_PREVINUSE_SET(header) ((header) |= 1)
+
+/* HEADER_PREVINUSE_CLEAR - clear the prev_inuse bit of a block header. */
+#define HEADER_PREVINUSE_CLEAR(header) ((header) &= ~1)
 
 /* PACK_SIZE - pack `size`, `inuse`, `prev_inuse` into a word. */
 #define PACK_SIZE(size, inuse, prev_inuse)                                     \
