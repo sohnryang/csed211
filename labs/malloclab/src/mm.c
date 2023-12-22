@@ -85,6 +85,33 @@ static word_t *expand_heap(size_t words) {
 }
 
 /*
+ * find_best_fit - find the best fit block in the free list.
+ * Returns a pointer to a block with smallest size that is at least `size`
+ * bytes.
+ */
+static word_t *find_best_fit(size_t size) {
+  struct header *current_best, *current;
+
+  if (freelist == NULL)
+    return NULL;
+
+  current_best = freelist;
+  for (current = freelist; current != NULL; current = current->next) {
+    if (HEADER_SIZE(current_best->size_with_flags) < size)
+      continue;
+
+    if (HEADER_SIZE(current->size_with_flags) <
+        HEADER_SIZE(current_best->size_with_flags))
+      current_best = current;
+  }
+
+  if (HEADER_SIZE(current_best->size_with_flags) < size)
+    return NULL;
+  else
+    return (word_t *)current_best;
+}
+
+/*
  * mm_init - initialize the malloc package.
  */
 int mm_init(void) {
