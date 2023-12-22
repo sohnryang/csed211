@@ -132,6 +132,18 @@ static word_t *split_block(word_t *block, size_t size) {
 }
 
 /*
+ * list_remove - remove a block from the free list.
+ */
+static void list_remove(struct header *block) {
+  if (block->prev != NULL)
+    block->prev->next = block->next;
+  if (block->next != NULL)
+    block->next->prev = block->prev;
+  if (block == freelist)
+    freelist = block->next;
+}
+
+/*
  * mm_init - initialize the malloc package.
  */
 int mm_init(void) {
