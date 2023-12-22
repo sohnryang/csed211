@@ -34,6 +34,13 @@ typedef uint32_t word_t;
 #define WORDSIZE sizeof(word_t)
 #define CHUNKSIZE (1 << 12)
 
+/* header - header of a block. */
+struct header {
+  uint32_t size_with_flags;
+  struct header *prev;
+  struct header *next;
+};
+
 /* DEREF_WORD - dereference word in `addr`. */
 #define DEREF_WORD(addr) (*((word_t *)addr))
 
