@@ -10,6 +10,7 @@
  * comment that gives a high level description of your solution.
  */
 #include <assert.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
