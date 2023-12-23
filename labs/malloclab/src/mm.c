@@ -328,7 +328,7 @@ void mm_free(void *ptr) {
   word_t *block = (word_t *)ptr - 1, *next_block;
 
   HEADER_INUSE_CLEAR(DEREF(block));
-  *FOOTER(block) = DEREF(block);
+  *FOOTER(block) = HEADER_SIZE(DEREF(block));
 
   next_block = NEXT_BLOCK(block);
   HEADER_PREVINUSE_CLEAR(DEREF(next_block));
