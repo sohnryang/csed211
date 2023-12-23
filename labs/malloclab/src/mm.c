@@ -319,17 +319,56 @@ void mm_free(void *ptr) {
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
  */
 void *mm_realloc(void *ptr, size_t size) {
-  void *oldptr = ptr, *newptr;
-  word_t *old_block = PAYLOAD_HEADER(oldptr);
-  size_t copy_size;
+  int prev_inuse;
+  word_t *block = PAYLOAD_HEADER(ptr), *next_block, *new_block, *prev_block;
+  size_t oldsize = HEADER_SIZE(DEREF(block)), newsize = ALIGN(size + WORDSIZE),
+         next_size;
+  void *newptr;
 
-  newptr = mm_malloc(size);
-  if (newptr == NULL)
+  if (size == 0) {
+    mm_free(ptr);
     return NULL;
-  copy_size = HEADER_SIZE(DEREF(old_block));
-  if (size < copy_size)
-    copy_size = size;
-  memcpy(newptr, oldptr, copy_size);
-  mm_free(oldptr);
-  return newptr;
+  } else if (ptr == NULL) {
+    return mm_malloc(size);
+  }
+
+  prev_inuse = HEADER_PREVINUSE(DEREF(block));
+  if (oldsize >= newsize) {
+    if (should_split(block, newsize)) {
+      next_block = NEXT_BLOCK(block);
+      HEADER_PREVINUSE_CLEAR(DEREF(next_block));
+
+      DEREF(block) = PACK_SIZE(newsize, 1, prev_inuse);
+      DEREF_FROM_NTH(block, newsize) = PACK_SIZE(oldsize - newsize, 0, 1);
+      DEREF_FROM_NTH(block, oldsize - WORDSIZE) = oldsize - newsize;
+      new_block = NEXT_BLOCK(block);
+      new_block = coalesce_block(new_block);
+      list_insert((struct header *)new_block);
+    }
+    return ptr;
+  } else {
+    next_block = NEXT_BLOCK(block);
+    next_size = HEADER_SIZE(DEREF(next_block));
+    if (!HEADER_INUSE(DEREF(next_block)) && oldsize + next_size >= newsize) {
+      list_remove((struct header *)next_block);
+      DEREF(block) = PACK_SIZE(oldsize + next_size, 1, prev_inuse);
+      if (should_split(block, newsize)) {
+        DEREF(block) = PACK_SIZE(newsize, 1, prev_inuse);
+        new_block = &DEREF_FROM_NTH(block, newsize);
+        DEREF(new_block) = PACK_SIZE(oldsize + next_size - newsize, 0, 1);
+        DEREF(FOOTER(new_block)) = oldsize + next_size - newsize;
+        new_block = coalesce_block(new_block);
+        list_insert((struct header *)new_block);
+      } else
+        HEADER_PREVINUSE_SET(DEREF(NEXT_BLOCK(block)));
+      return ptr;
+    } else {
+      newptr = mm_malloc(size);
+      if (newptr == NULL)
+        return NULL;
+      memcpy(newptr, ptr, oldsize);
+      mm_free(ptr);
+      return newptr;
+    }
+  }
 }
