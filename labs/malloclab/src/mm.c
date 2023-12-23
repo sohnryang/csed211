@@ -319,10 +319,10 @@ void mm_free(void *ptr) {
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
  */
 void *mm_realloc(void *ptr, size_t size) {
-  int prev_inuse;
+  int prev_inuse, prev_prev_inuse;
   word_t *block = PAYLOAD_HEADER(ptr), *next_block, *new_block, *prev_block;
   size_t oldsize = HEADER_SIZE(DEREF(block)), newsize = ALIGN(size + WORDSIZE),
-         next_size;
+         next_size, prev_size;
   void *newptr;
 
   if (size == 0) {
@@ -362,6 +362,48 @@ void *mm_realloc(void *ptr, size_t size) {
       } else
         HEADER_PREVINUSE_SET(DEREF(NEXT_BLOCK(block)));
       return ptr;
+    } else if (!HEADER_PREVINUSE(DEREF(block)) &&
+               oldsize + HEADER_SIZE(DEREF(PREV_BLOCK(block))) >= newsize) {
+      prev_size = HEADER_SIZE(DEREF(PREV_BLOCK(block)));
+      prev_block = PREV_BLOCK(block);
+      prev_prev_inuse = HEADER_PREVINUSE(DEREF(prev_block));
+      list_remove((struct header *)prev_block);
+      DEREF(prev_block) = PACK_SIZE(prev_size + oldsize, 1, prev_prev_inuse);
+      memmove(prev_block + 1, block + 1, oldsize - WORDSIZE);
+      if (should_split(prev_block, newsize)) {
+        DEREF(prev_block) = PACK_SIZE(newsize, 1, prev_prev_inuse);
+        new_block = &DEREF_FROM_NTH(prev_block, newsize);
+        DEREF(new_block) = PACK_SIZE(prev_size + oldsize - newsize, 0, 1);
+        DEREF(FOOTER(new_block)) = prev_size + oldsize - newsize;
+        new_block = coalesce_block(new_block);
+        list_insert((struct header *)new_block);
+        HEADER_PREVINUSE_CLEAR(DEREF(NEXT_BLOCK(new_block)));
+      }
+      return prev_block + 1;
+    } else if (!HEADER_INUSE(DEREF(next_block)) &&
+               !HEADER_PREVINUSE(DEREF(block)) &&
+               oldsize + HEADER_SIZE(DEREF(PREV_BLOCK(block))) + next_size >=
+                   newsize) {
+      prev_size = HEADER_SIZE(DEREF(PREV_BLOCK(block)));
+      prev_block = PREV_BLOCK(block);
+      prev_prev_inuse = HEADER_PREVINUSE(DEREF(prev_block));
+      list_remove((struct header *)prev_block);
+      list_remove((struct header *)next_block);
+      DEREF(prev_block) =
+          PACK_SIZE(prev_size + oldsize + next_size, 1, prev_prev_inuse);
+      memmove(prev_block + 1, block + 1, oldsize - WORDSIZE);
+      if (should_split(prev_block, newsize)) {
+        DEREF(prev_block) = PACK_SIZE(newsize, 1, prev_prev_inuse);
+        new_block = &DEREF_FROM_NTH(prev_block, newsize);
+        DEREF(new_block) =
+            PACK_SIZE(prev_size + oldsize + next_size - newsize, 0, 1);
+        DEREF(FOOTER(new_block)) = prev_size + oldsize + next_size - newsize;
+        new_block = coalesce_block(new_block);
+        list_insert((struct header *)new_block);
+        HEADER_PREVINUSE_CLEAR(DEREF(NEXT_BLOCK(new_block)));
+      } else
+        HEADER_PREVINUSE_SET(DEREF(NEXT_BLOCK(prev_block)));
+      return prev_block + 1;
     } else {
       newptr = mm_malloc(size);
       if (newptr == NULL)
