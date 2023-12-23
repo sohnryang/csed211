@@ -366,7 +366,7 @@ void *mm_realloc(void *ptr, size_t size) {
       newptr = mm_malloc(size);
       if (newptr == NULL)
         return NULL;
-      memcpy(newptr, ptr, oldsize);
+      memcpy(newptr, ptr, oldsize - WORDSIZE);
       mm_free(ptr);
       return newptr;
     }
