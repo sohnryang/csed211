@@ -254,6 +254,8 @@ static size_t handle_exceptional_size(size_t size) {
 
 /*
  * mm_init - initialize the malloc package.
+ * Prologue and epilogue blocks are created. The initial free block is of
+ * CHUNKSIZE.
  */
 int mm_init(void) {
   word_t *prologue_block, *init_block;
@@ -320,6 +322,7 @@ void *mm_malloc(size_t size) {
 
 /*
  * mm_free - Free a block.
+ * Coalesce the block and insert to free list.
  */
 void mm_free(void *ptr) {
   word_t *block = (word_t *)ptr - 1, *next_block;
@@ -335,7 +338,11 @@ void mm_free(void *ptr) {
 }
 
 /*
- * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
+ * mm_realloc - Reallocate a block.
+ * After special-case handling, if the new size is smaller than the old size,
+ * shrink the block and split if needed. If the new size is larger than the old
+ * size, check if the block can be expanded. If not, allocate a new block and
+ * copy the contents of the old block.
  */
 void *mm_realloc(void *ptr, size_t size) {
   int prev_inuse, prev_prev_inuse;
