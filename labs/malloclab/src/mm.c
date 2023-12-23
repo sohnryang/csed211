@@ -300,17 +300,24 @@ void *mm_malloc(size_t size) {
     block = expand_heap(MAX(newsize, CHUNKSIZE) / WORDSIZE);
     if (block == NULL)
       return NULL;
-  } else {
-    list_remove((struct header *)block);
-    if (should_split(block, newsize)) {
-      new_block = split_block(block, newsize);
-      list_insert((struct header *)new_block);
-    }
+    block = coalesce_block(block);
+    list_insert((struct header *)block);
+    block = find_best_fit(newsize);
   }
 
-  next_block = NEXT_BLOCK(block);
-  HEADER_PREVINUSE_SET(DEREF_FROM_NTH(next_block, 0));
-  HEADER_PREVINUSE_SET(*FOOTER(next_block));
+  list_remove((struct header *)block);
+  if (should_split(block, newsize)) {
+    new_block = split_block(block, newsize);
+    HEADER_PREVINUSE_SET(DEREF(new_block));
+    HEADER_PREVINUSE_SET(*FOOTER(new_block));
+    new_block = coalesce_block(new_block);
+    list_insert((struct header *)new_block);
+  } else {
+    next_block = NEXT_BLOCK(block);
+    HEADER_PREVINUSE_SET(DEREF(next_block));
+    if (!HEADER_INUSE(DEREF(next_block)))
+      HEADER_PREVINUSE_SET(*FOOTER(next_block));
+  }
   HEADER_INUSE_SET(DEREF(block));
 
   return (void *)(block + 1);
@@ -321,16 +328,16 @@ void *mm_malloc(size_t size) {
  */
 void mm_free(void *ptr) {
   word_t *block = (word_t *)ptr - 1, *next_block;
-  size_t block_size = HEADER_SIZE(DEREF(block));
 
   HEADER_INUSE_CLEAR(DEREF(block));
-  DEREF_FROM_NTH(block, block_size - WORDSIZE) = DEREF(block);
+  *FOOTER(block) = DEREF(block);
 
   next_block = NEXT_BLOCK(block);
   HEADER_PREVINUSE_CLEAR(DEREF(next_block));
   if (!HEADER_INUSE(DEREF(next_block)))
     HEADER_PREVINUSE_CLEAR(*FOOTER(next_block));
 
+  block = coalesce_block(block);
   list_insert((struct header *)block);
 }
 
