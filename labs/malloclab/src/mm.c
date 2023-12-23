@@ -217,6 +217,39 @@ static word_t *split_block(word_t *block, size_t size) {
 }
 
 /*
+ * coalesce_block - coalesce a block with its neighbors.
+ * Returns a pointer to the coalesced block.
+ */
+static word_t *coalesce_block(word_t *block) {
+  word_t *prev_block, *next_block = NEXT_BLOCK(block);
+  size_t original_size = HEADER_SIZE(DEREF(block)),
+         current_size = original_size,
+         next_size = HEADER_SIZE(DEREF(next_block)), prev_size;
+  int inuse = HEADER_INUSE(DEREF(block)),
+      prev_inuse = HEADER_PREVINUSE(DEREF(block)), prev_prev_inuse;
+
+  if (!HEADER_INUSE(DEREF(next_block))) {
+    list_remove((struct header *)next_block);
+    DEREF(block) = PACK_SIZE(original_size + next_size, inuse, prev_inuse);
+    DEREF_FROM_NTH(block, original_size + next_size - WORDSIZE) = DEREF(block);
+    current_size += next_size;
+  }
+
+  if (prev_inuse)
+    return block;
+
+  prev_block = PREV_BLOCK(block);
+  prev_size = HEADER_SIZE(DEREF(prev_block));
+  list_remove((struct header *)prev_block);
+  prev_prev_inuse = HEADER_PREVINUSE(DEREF(prev_block));
+  DEREF(prev_block) =
+      PACK_SIZE(prev_size + current_size, inuse, prev_prev_inuse);
+  DEREF_FROM_NTH(prev_block, prev_size + current_size - WORDSIZE) =
+      DEREF(prev_block);
+  return prev_block;
+}
+
+/*
  * should_split - check if `block` should be split, if only `size` bytes are
  * needed.
  * Returns true if a new block with minimal size of 4 words can be created.
