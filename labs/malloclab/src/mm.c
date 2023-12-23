@@ -1,13 +1,18 @@
 /*
- * mm-naive.c - The fastest, least memory-efficient malloc package.
+ * mm.c - Explicit free list with best-fit strategy and coalescing.
  *
- * In this naive approach, a block is allocated by simply incrementing
- * the brk pointer.  A block is pure payload. There are no headers or
- * footers.  Blocks are never coalesced or reused. Realloc is
- * implemented directly using mm_malloc and mm_free.
+ * In this approach, each block has a header and a footer. The header contains
+ * the size of the block, the inuse bit, and the prev_inuse bit. The footer
+ * contains the size of the block. The inuse bit indicates whether the block is
+ * in use or not. The prev_inuse bit indicates whether the previous block is in
+ * use or not. The header and the footer are both 4 bytes. The minimum block
+ * size is 16 bytes, as the block should contain a header, a footer, and two
+ * pointers for free list. For allocated blocks, space for pointers and footer
+ * are used for payload.
  *
- * NOTE TO STUDENTS: Replace this header comment with your own header
- * comment that gives a high level description of your solution.
+ * The free list is implemented as a doubly linked list. Each block contains
+ * two pointers for the free list. The free list is oranized in LIFO order. When
+ * searching for a free block, the best-fit strategy is used.
  */
 #include <assert.h>
 #include <stdbool.h>
