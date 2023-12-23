@@ -175,11 +175,12 @@ static word_t *find_best_fit(size_t size) {
 
   current_best = freelist_head;
   for (current = freelist_head; current != NULL; current = current->next) {
-    if (HEADER_SIZE(current_best->size_with_flags) < size)
+    if (HEADER_SIZE(current->size_with_flags) < size)
       continue;
 
-    if (HEADER_SIZE(current->size_with_flags) <
-        HEADER_SIZE(current_best->size_with_flags))
+    if (HEADER_SIZE(current_best->size_with_flags) < size ||
+        HEADER_SIZE(current->size_with_flags) <
+            HEADER_SIZE(current_best->size_with_flags))
       current_best = current;
   }
 
