@@ -348,17 +348,17 @@ void mm_free(void *ptr) {
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
  */
 void *mm_realloc(void *ptr, size_t size) {
-  void *oldptr = ptr;
-  void *newptr;
-  size_t copySize;
+  void *oldptr = ptr, *newptr;
+  word_t *old_block = PAYLOAD_HEADER(oldptr);
+  size_t copy_size;
 
   newptr = mm_malloc(size);
   if (newptr == NULL)
     return NULL;
-  copySize = *(size_t *)((char *)oldptr - SIZE_T_SIZE);
-  if (size < copySize)
-    copySize = size;
-  memcpy(newptr, oldptr, copySize);
+  copy_size = HEADER_SIZE(DEREF(old_block));
+  if (size < copy_size)
+    copy_size = size;
+  memcpy(newptr, oldptr, copy_size);
   mm_free(oldptr);
   return newptr;
 }
