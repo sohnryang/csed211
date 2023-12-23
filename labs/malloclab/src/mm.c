@@ -232,7 +232,7 @@ static word_t *coalesce_block(word_t *block) {
  */
 static bool should_split(word_t *block, size_t size) {
   size_t block_size = HEADER_SIZE(block[0]);
-  return block_size >= size + 4 * WORDSIZE;
+  return block_size >= size + 16 * WORDSIZE;
 }
 
 /*
