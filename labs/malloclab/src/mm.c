@@ -296,6 +296,9 @@ void *mm_malloc(size_t size) {
   int newsize = ALIGN(size + WORDSIZE);
   word_t *block = find_best_fit(newsize), *new_block, *next_block;
 
+  if (size == 0)
+    return NULL;
+
   if (block == NULL) {
     block = expand_heap(MAX(newsize, CHUNKSIZE) / WORDSIZE);
     if (block == NULL)
