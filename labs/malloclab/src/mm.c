@@ -139,8 +139,7 @@ static word_t *expand_heap(size_t words) {
   new_block = PAYLOAD_HEADER(new_block_payload);
   DEREF_FROM_NTH(new_block, 0) =
       PACK_SIZE(expand_size, 0, HEADER_PREVINUSE(epilogue));
-  DEREF_FROM_NTH(new_block, expand_size - WORDSIZE) =
-      DEREF_FROM_NTH(new_block, 0);
+  DEREF_FROM_NTH(new_block, expand_size - WORDSIZE) = expand_size;
   DEREF_FROM_NTH(new_block, expand_size) = PACK_SIZE(0, 1, 0);
   return new_block;
 }
@@ -186,9 +185,9 @@ static word_t *split_block(word_t *block, size_t size) {
     return block;
 
   DEREF_FROM_NTH(block, 0) = PACK_SIZE(size, 0, prev_inuse);
-  DEREF_FROM_NTH(block, size - WORDSIZE) = block[0];
+  DEREF_FROM_NTH(block, size - WORDSIZE) = size;
   DEREF_FROM_NTH(block, size) = PACK_SIZE(block_size - size, 0, 0);
-  DEREF_FROM_NTH(block, block_size - WORDSIZE) = DEREF_FROM_NTH(block, size);
+  DEREF_FROM_NTH(block, block_size - WORDSIZE) = block_size - size;
   return &DEREF_FROM_NTH(block, size);
 }
 
@@ -207,7 +206,8 @@ static word_t *coalesce_block(word_t *block) {
   if (!HEADER_INUSE(DEREF(next_block))) {
     list_remove((struct header *)next_block);
     DEREF(block) = PACK_SIZE(original_size + next_size, inuse, prev_inuse);
-    DEREF_FROM_NTH(block, original_size + next_size - WORDSIZE) = DEREF(block);
+    DEREF_FROM_NTH(block, original_size + next_size - WORDSIZE) =
+        original_size + next_size;
     current_size += next_size;
   }
 
@@ -221,7 +221,7 @@ static word_t *coalesce_block(word_t *block) {
   DEREF(prev_block) =
       PACK_SIZE(prev_size + current_size, inuse, prev_prev_inuse);
   DEREF_FROM_NTH(prev_block, prev_size + current_size - WORDSIZE) =
-      DEREF(prev_block);
+      prev_size + current_size;
   return prev_block;
 }
 
@@ -248,7 +248,7 @@ int mm_init(void) {
 
   prologue_block[0] = 0;
   prologue_block[1] = PACK_SIZE(8, 1, 0);
-  prologue_block[2] = PACK_SIZE(8, 1, 0);
+  prologue_block[2] = 0;
   prologue_block[3] = PACK_SIZE(0, 1, 1);
 
   init_block = expand_heap(CHUNKSIZE / WORDSIZE);
@@ -288,14 +288,11 @@ void *mm_malloc(size_t size) {
   if (should_split(block, newsize)) {
     new_block = split_block(block, newsize);
     HEADER_PREVINUSE_SET(DEREF(new_block));
-    HEADER_PREVINUSE_SET(*FOOTER(new_block));
     new_block = coalesce_block(new_block);
     list_insert((struct header *)new_block);
   } else {
     next_block = NEXT_BLOCK(block);
     HEADER_PREVINUSE_SET(DEREF(next_block));
-    if (!HEADER_INUSE(DEREF(next_block)))
-      HEADER_PREVINUSE_SET(*FOOTER(next_block));
   }
   HEADER_INUSE_SET(DEREF(block));
 
@@ -313,8 +310,6 @@ void mm_free(void *ptr) {
 
   next_block = NEXT_BLOCK(block);
   HEADER_PREVINUSE_CLEAR(DEREF(next_block));
-  if (!HEADER_INUSE(DEREF(next_block)))
-    HEADER_PREVINUSE_CLEAR(*FOOTER(next_block));
 
   block = coalesce_block(block);
   list_insert((struct header *)block);
