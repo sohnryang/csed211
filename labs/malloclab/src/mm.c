@@ -253,6 +253,81 @@ static size_t handle_exceptional_size(size_t size) {
 }
 
 /*
+ * mm_check - Check the heap for consistency.
+ * Returns 1 if the heap is consistent, 0 otherwise.
+ *
+ * Tests for free list consistency, inuse/prev_inuse bit consistency, and
+ * coalescing.
+ */
+int mm_check(void) {
+  struct header *current;
+  word_t *current_block;
+  bool found;
+
+  /* Check free list consistency. */
+  for (current = freelist_head; current != NULL; current = current->next) {
+    if (HEADER_INUSE(current->size_with_flags)) {
+      fprintf(stderr, "%p: Free list contains an allocated block.\n", current);
+      return 0;
+    }
+  }
+
+  current_block = (word_t *)mem_heap_lo() + 3;
+  while (current_block < (word_t *)mem_heap_hi() - 1) {
+    /* Check if the block has nonzero size. */
+    if (HEADER_SIZE(DEREF(current_block)) == 0) {
+      fprintf(stderr, "%p: Block with size zero\n", current_block);
+      return 0;
+    }
+
+    /* Check if header and footer size are consistent. */
+    if (!HEADER_INUSE(DEREF(current_block)) &&
+        HEADER_SIZE(DEREF(current_block)) != DEREF(FOOTER(current_block))) {
+      fprintf(stderr,
+              "%p: Header and footer size of free block is inconsistent.\n",
+              current_block);
+      return 0;
+    }
+
+    /* Check if coalescing is correct. */
+    if (!HEADER_INUSE(DEREF(current_block)) &&
+        !HEADER_INUSE(DEREF(NEXT_BLOCK(current_block)))) {
+      fprintf(stderr, "%p: Two consecutive free blocks.\n", current_block);
+      return 0;
+    }
+
+    /* Check if inuse and prev_inuse bits are consistent. */
+    if (HEADER_INUSE(DEREF(current_block)) !=
+        HEADER_PREVINUSE(DEREF(NEXT_BLOCK(current_block)))) {
+      fprintf(stderr,
+              "%p: The inuse bit of current block and prev_inuse bit of the "
+              "next block is inconsistent.\n",
+              current_block);
+      return 0;
+    }
+
+    /* Check if the block is in the free list. */
+    if (!HEADER_INUSE(DEREF(current_block))) {
+      found = false;
+      for (current = freelist_head; current != NULL; current = current->next) {
+        if (current == (struct header *)current_block) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        fprintf(stderr, "%p: Block not in free list.\n", current_block);
+        return 0;
+      }
+    }
+
+    current_block = NEXT_BLOCK(current_block);
+  }
+
+  return 1;
+}
+
+/*
  * mm_init - initialize the malloc package.
  * Prologue and epilogue blocks are created. The initial free block is of
  * CHUNKSIZE.
