@@ -342,7 +342,7 @@ int mm_init(void) {
 
   prologue_block[0] = 0;
   prologue_block[1] = PACK_SIZE(8, 1, 0);
-  prologue_block[2] = 0;
+  prologue_block[2] = 8;
   prologue_block[3] = PACK_SIZE(0, 1, 1);
 
   init_block = expand_heap(CHUNKSIZE / WORDSIZE);
